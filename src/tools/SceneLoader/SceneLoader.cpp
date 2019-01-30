@@ -37,12 +37,12 @@
 #include "SceneLoader.h"
 
 #include "LoaderTools/ComponentExporter.h"
-#include "LoaderTools/GroupInstance.h"
+#include "commonComponents/CommonComponents.h"
 
 #include "SampleComponents/PlayAnimation.h"
 #include "SampleComponents/Rotator.h"
-#include "SceneLoaderComponents.h"
-
+#include "game/gameComponents/GameComponents.h"
+#include <Globals.h>
 
 URHO3D_DEFINE_APPLICATION_MAIN(SceneLoader)
 
@@ -52,8 +52,8 @@ SceneLoader::SceneLoader(Context* context) :
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
     // register group instance component
-    SceneLoaderComponents::RegisterComponents(context);
-    SceneLoaderComponents::RegisterSampleComponents(context);
+    CommonComponents::RegisterComponents(context);
+    GameComponents::RegisterComponents(context);
 }
 
 
@@ -61,6 +61,8 @@ void SceneLoader::Start()
 {
     auto args = GetArguments();
     ResourceCache* cache = GetSubsystem<ResourceCache>();
+    Globals::instance()->cache=cache;
+
     for (int i=0;i < args.Size(); i++){
         if (args[i]=="--workpath" && (i+1)<args.Size()){
             String workpath = args[i+1];
@@ -116,6 +118,7 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddComponentHashToFilterList(NavArea::GetTypeStatic());
     exporter->AddComponentHashToFilterList(GroupInstance::GetTypeStatic());
     exporter->AddComponentHashToFilterList(PlayAnimation::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(NavigationMesh::GetTypeStatic());
 
     exporter->AddCustomUIFile("./customui.py");
     exporter->AddMaterialFolder("Materials");
@@ -128,7 +131,6 @@ bool SceneLoader::CreateScene()
     ResourceCache* cache = GetSubsystem<ResourceCache>();
 
     scene_ = new Scene(context_);
-
     SharedPtr<File> file = cache->GetFile("Scenes/"+sceneName);
     if (file.Null()){
         URHO3D_LOGERROR("SceneLoader could not find 'Scenes/Scene.xml' in its resource-path");
@@ -137,12 +139,13 @@ bool SceneLoader::CreateScene()
     }
     cache->SetAutoReloadResources(true);
     scene_->LoadXML(*file);
+    Globals::instance()->scene=scene_;
 
     // Create the camera (not included in the scene file)
     cameraNode_ = scene_->CreateChild("Camera");
-    cameraNode_->CreateComponent<Camera>();
+    Camera* camera = cameraNode_->CreateComponent<Camera>();
     cameraNode_->SetPosition(Vector3(0.0f, 2.0f, -10.0f));
-
+    Globals::instance()->camera=camera;
 /*
     // set a light
     // TODO: Use only the light provided by scene (once this is exported correctly)

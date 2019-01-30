@@ -34,8 +34,9 @@
 #include <Urho3D/Resource/ResourceEvents.h>
 #include <Urho3D/DebugNew.h>
 #include <Urho3D/Resource/XMLFile.h>
-#include <tools/SceneLoader/SceneLoaderComponents.h>
-
+#include "Globals.h"
+#include "gameComponents/GameComponents.h"
+#include "commonComponents/CommonComponents.h"
 
 URHO3D_DEFINE_APPLICATION_MAIN(Main)
 
@@ -43,9 +44,8 @@ Main::Main(Context* context) :
     Sample(context), sceneName("Scene.xml")
 {
     // register component exporter
-    SceneLoaderComponents::RegisterComponents(context);
-    SceneLoaderComponents::RegisterSampleComponents(context);
-
+    CommonComponents::RegisterComponents(context);
+    GameComponents::RegisterComponents(context);
 }
 
 void Main::Start()
@@ -58,6 +58,8 @@ void Main::Start()
             i++;
         }
     }
+    Globals::instance()->cache=cache;
+
     // Execute base class startup
     Sample::Start();
 
@@ -84,6 +86,7 @@ bool Main::CreateScene()
     ResourceCache* cache = GetSubsystem<ResourceCache>();
 
     scene_ = new Scene(context_);
+    Globals::instance()->scene=scene_;
 
     SharedPtr<File> file = cache->GetFile("Scenes/Scene.xml");
     if (file.Null()){
@@ -95,9 +98,9 @@ bool Main::CreateScene()
 
     // Create the camera (not included in the scene file)
     cameraNode_ = scene_->CreateChild("Camera");
-    cameraNode_->CreateComponent<Camera>();
+    Camera* camera = cameraNode_->CreateComponent<Camera>();
     cameraNode_->SetPosition(Vector3(0.0f, 2.0f, -10.0f));
-
+    Globals::instance()->camera=camera;
 
     // set a light
     // TODO: Use only the light provided by scene (once this is exported correctly)

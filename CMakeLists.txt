@@ -25,23 +25,31 @@ include (UrhoCommon)
 # Define target name
 
 
-set (GAME_SRC
+set (GAME_ONLY_SRC
     src/game/Main.cpp src/game/Main.h
 )
 
-# mandatory if you want to use special features from the blender-exporter
-set (SCENE_LOADER_COMPONENTS
-    src/tools/SceneLoader/LoaderTools/GroupInstance.h
-    src/tools/SceneLoader/LoaderTools/GroupInstance.cpp
-    src/tools/SceneLoader/SceneLoaderComponents.h
+set (GAME_COMMON
+    src/Globals.h
 )
 
-set (SCENE_LOADER_COMPONENT_SAMPLES
-    src/tools/SceneLoader/SampleComponents/Rotator.h
-    src/tools/SceneLoader/SampleComponents/Rotator.cpp
-    src/tools/SceneLoader/SampleComponents/PlayAnimation.h
-    src/tools/SceneLoader/SampleComponents/PlayAnimation.cpp
+
+file (GLOB GAME_COMPONENTS
+    "src/game/gameComponents/*.h"
+    "src/game/gameComponents/*.cpp"
 )
+
+# mandatory if you want to use special features from the blender-exporter
+file(GLOB SCENE_LOADER_COMPONENT_SAMPLES
+    "src/tools/SceneLoader/SampleComponents/*.h"
+    "src/tools/SceneLoader/SampleComponents/*.cpp"
+)
+
+file(GLOB COMMON_COMPONENTS_SOURCE
+    "src/commonComponents/*.h"
+    "src/commonComponents/*.cpp"
+)
+
 
 set (SCENE_LOADER_SRC
     # blender tools files
@@ -57,11 +65,13 @@ set (SCENE_LOADER_SRC
 )
 
 set (COMMON_SOURCE_FILES
-    ${SCENE_LOADER_COMPONENTS}
     ${SCENE_LOADER_COMPONENT_SAMPLES}
+    ${COMMON_COMPONENTS_SOURCE}
+    ${GAME_COMPONENTS}
+    ${GAME_COMMON}
 )
 
-set (INCLUDE_DIRS src)
+set (INCLUDE_DIRS src )
 
 
 set (TARGET_NAME UrhoSceneLoader)
@@ -79,7 +89,7 @@ setup_main_executable ()
 set (TARGET_NAME ${PROJECT_NAME})
 set (SOURCE_FILES
     ${COMMON_SOURCE_FILES}
-    ${GAME_SRC}
+    ${GAME_ONLY_SRC}
 )
 setup_main_executable ()
 
