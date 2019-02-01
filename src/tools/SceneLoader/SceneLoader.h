@@ -73,4 +73,5 @@ private:
 
     String sceneName;
     Vector<String> runtimeFlags;
+    String exportPath;
 };

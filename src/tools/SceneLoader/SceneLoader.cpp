@@ -47,7 +47,9 @@
 URHO3D_DEFINE_APPLICATION_MAIN(SceneLoader)
 
 SceneLoader::SceneLoader(Context* context) :
-    Sample(context), sceneName("Scene.xml")
+    Sample(context)
+    ,sceneName("Scene.xml")
+    ,exportPath("./urho3d_components.json")
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -64,20 +66,29 @@ void SceneLoader::Start()
     Globals::instance()->cache=cache;
 
     for (int i=0;i < args.Size(); i++){
-        if (args[i]=="--workpath" && (i+1)<args.Size()){
+        String arg = args[i];
+        if (args[i]=="--workingdir" && (i+1)<args.Size()){
             String workpath = args[i+1];
             cache->AddResourceDir(workpath,0);
             i++;
+            URHO3D_LOGINFOF("[SceneLoader] added resourcepath:%s",workpath.CString());
         }
         else if (args[i]=="--scenename" && (i+1)<args.Size()){
             sceneName = args[i+1];
             i++;
+            URHO3D_LOGINFOF("[SceneLoader] opening SCENE:%s",sceneName.CString());
         }
         else if (args[i]=="--runtimeflags" && (i+1)<args.Size()){
             String flags(args[i+1]);
             runtimeFlags = flags.Split(';');
             i++;
+            URHO3D_LOGINFOF("[SceneLoader] runtime-flags: %s",flags.CString());
         }
+        else if (args[i]=="--componentexport" && (i+1)<args.Size()){
+            exportPath = args[i+1];
+            i++;
+        }
+
     }
     // Execute base class startup
     Sample::Start();
@@ -99,7 +110,7 @@ void SceneLoader::Start()
     // Set the mouse mode to use in the sample
     Sample::InitMouseMode(MM_FREE);
 
-    ExportComponents("./urho3d_components.json");
+    ExportComponents(exportPath);
 }
 
 void SceneLoader::ExportComponents(const String& outputPath)
