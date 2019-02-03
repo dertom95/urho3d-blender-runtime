@@ -130,6 +130,10 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddComponentHashToFilterList(GroupInstance::GetTypeStatic());
     exporter->AddComponentHashToFilterList(PlayAnimation::GetTypeStatic());
     exporter->AddComponentHashToFilterList(NavigationMesh::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(Octree::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(PhysicsWorld::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(DebugRenderer::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(Zone::GetTypeStatic());
 
     exporter->AddCustomUIFile("./customui.py");
     exporter->AddMaterialFolder("Materials");
@@ -157,13 +161,23 @@ bool SceneLoader::CreateScene()
     Camera* camera = cameraNode_->CreateComponent<Camera>();
     cameraNode_->SetPosition(Vector3(0.0f, 2.0f, -10.0f));
     Globals::instance()->camera=camera;
-/*
+
     // set a light
     // TODO: Use only the light provided by scene (once this is exported correctly)
-    Node* lightNode = scene_->CreateChild("DirectionalLight");
-    lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
-    auto* light = lightNode->CreateComponent<Light>();
-    light->SetLightType(LIGHT_DIRECTIONAL);*/
+    PODVector<Light*> sceneLights;
+    scene_->GetComponents<Light>(sceneLights,true);
+
+    if (sceneLights.Size()==0){
+        Node* lightNode = scene_->CreateChild("DirectionalLight");
+        lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+        Light* light = lightNode->CreateComponent<Light>();
+        light->SetLightType(LIGHT_DIRECTIONAL);
+        light->SetColor(Color::RED);
+    }
+
+
+    File saveFile(context_, "./scene.write.xml",FILE_WRITE);
+    scene_->SaveXML(saveFile);
 
     return true;
 }
@@ -179,11 +193,18 @@ void SceneLoader::ReloadScene()
     }
     scene_->LoadXML(*file);
 
-    // set a light
-    Node* lightNode = scene_->CreateChild("DirectionalLight");
-    lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
-    auto* light = lightNode->CreateComponent<Light>();
-    light->SetLightType(LIGHT_DIRECTIONAL);
+    // check if the scene has a light
+    PODVector<Light*> sceneLights;
+    scene_->GetComponents<Light>(sceneLights,true);
+
+    if (sceneLights.Size()==0){
+        Node* lightNode = scene_->CreateChild("DirectionalLight");
+        lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+        Light* light = lightNode->CreateComponent<Light>();
+        light->SetLightType(LIGHT_DIRECTIONAL);
+        light->SetColor(Color::RED);
+    }
+
 
     File saveFile(context_, "./scene.write.xml",FILE_WRITE);
     scene_->SaveXML(saveFile);

@@ -2,6 +2,7 @@
 
 #include <Urho3D/Core/Context.h>
 
+#include "Global.h"
 
 using namespace Urho3D;
 
@@ -12,4 +13,5 @@ public:
 
 void GameComponents::RegisterComponents(Context *context)
 {
+    SceneLogic::RegisterObject(context);
 }
