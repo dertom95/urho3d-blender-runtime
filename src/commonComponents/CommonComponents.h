@@ -6,6 +6,7 @@
 #include <commonComponents/NavigationMesh.h>
 #include <tools/SceneLoader/SampleComponents/Rotator.h>
 #include <tools/SceneLoader/SampleComponents/PlayAnimation.h>
+#include <tools/SceneLoader/SampleComponents/ShapeKey.h>
 
 using namespace Urho3D;
 
@@ -20,4 +21,5 @@ void CommonComponents::RegisterComponents(Context *context)
     CNavigationMesh::RegisterObject(context);
     Rotator::RegisterObject(context);
     PlayAnimation::RegisterObject(context);
+    ShapeKey::RegisterObject(context);
 }

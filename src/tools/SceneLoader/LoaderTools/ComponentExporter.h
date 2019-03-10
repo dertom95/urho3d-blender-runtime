@@ -30,6 +30,7 @@ public:
 
     void AddMaterialFolder(const String& folder);
     void AddTechniqueFolder(const String& folder);
+    void AddTextureFolder(const String& folder);
 
     void Export(String filename);
 
@@ -42,7 +43,20 @@ public:
 
     void AddCustomUIFile(const String& filename);
 
+
+    enum NodeType {NT_BOOL,NT_FLOAT,NT_INT,NT_STRING,NT_VECTOR2,NT_VECTOR3,NT_VECTOR4,NT_COLOR};
+    enum NodeSubType {ST_NONE,ST_PIXEL,ST_UNSIGNED,ST_FACTOR,ST_ANGLE,ST_TIME,ST_DISTANCE};
+    enum NodeSocketType {SOCK_FLOAT,SOCK_BOOL,SOCK_STRING,SOCK_VECTOR};
+
+    void NodeSetData(JSONObject& node,const String& id,const String& name,const String category="misc");
+    void NodeAddProp(JSONObject& node, const String& name, NodeType type, const String& defaultValue, NodeSubType subType=ST_NONE, int precission=3, float min=0, float max=1.0f);
+    void NodeAddPropEnum(JSONObject& node,const String& name,JSONArray& elements,const String& defaultValue="0");
+    void NodeAddEnumElement(JSONArray& elementsArray, const String& id,const String& name="",const String& descr="",const String& icon="COLOR",const String& number="0");
+    void NodeAddInputSocket(JSONObject& node,const String& name, NodeSocketType type);
+    void NodeAddOutputSocket(JSONObject& node,const String& name, NodeSocketType type);
 private:
+    void NodeAddSocket(JSONObject& node,const String& name, NodeSocketType type, bool isInputSocket);
+
     bool CheckSuperTypes(const TypeInfo* type);
 
 
@@ -55,5 +69,6 @@ private:
     HashSet<StringHash> m_listOfSuperClasses;
     Vector<String> m_materialFolders;
     Vector<String> m_techniqueFolders;
+    Vector<String> m_textureFolders;
     Vector<String> m_customUIFilenames;
 };

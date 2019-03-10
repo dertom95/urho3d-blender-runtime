@@ -36,7 +36,7 @@ set (GAME_COMMON
 
 file (GLOB GAME_COMPONENTS
     "src/game/gameComponents/*.h"
-    "src/game/gameComponents/*.cpp"
+    "src/game/gameComponents/*.cpp" 
 )
 
 # mandatory if you want to use special features from the blender-exporter

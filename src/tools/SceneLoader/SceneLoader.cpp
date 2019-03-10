@@ -138,6 +138,7 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddCustomUIFile("./customui.py");
     exporter->AddMaterialFolder("Materials");
     exporter->AddTechniqueFolder("Techniques");
+    exporter->AddTextureFolder("Textures");
     exporter->Export(outputPath);
 }
 

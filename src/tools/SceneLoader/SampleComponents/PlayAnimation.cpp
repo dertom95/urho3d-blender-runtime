@@ -1,4 +1,5 @@
 #include "PlayAnimation.h"
+#include <Urho3D/Urho3DAll.h>
 
 PlayAnimation::PlayAnimation(Context *ctx)
     : LogicComponent(ctx),animControl(0),speed(1)
@@ -25,7 +26,11 @@ void PlayAnimation::SetAnimationFile(const String &animFile)
 void PlayAnimation::DelayedStart()
 {
     if (animationFile.Empty()) return;
-
+//    AnimatedModel* amodel = node_->GetComponent<AnimatedModel>();
+  //  auto model = amodel->GetModel();
+//    node_->RemoveComponent<AnimatedModel>();
+//    amodel = node_->CreateComponent<AnimatedModel>();
+//    amodel->SetModel(model);
 
     if (!animControl){
         animControl = node_->CreateComponent<AnimationController>();
