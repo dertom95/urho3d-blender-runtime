@@ -2,6 +2,7 @@
 
 #include <Urho3D/Urho3DAll.h>
 #include "base64.h"
+#include <Urho3D/Container/Sort.h>
 
 
 Urho3DNodeTreeExporter::Urho3DNodeTreeExporter(Context* context, ExportMode exportMode)
@@ -30,6 +31,11 @@ bool Urho3DNodeTreeExporter::CheckSuperTypes(const TypeInfo* type)
     return true;
 }
 
+
+bool CompareString(const String& a,const String& b){
+    return a < b;
+}
+
 JSONObject Urho3DNodeTreeExporter::ExportMaterials()
 {
     const String treeID="urho3dmaterials";
@@ -55,6 +61,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
             }
         }
 
+
         // grab techniques from the specified technique folders
         for (String path : m_techniqueFolders){
             String dir = resDir+path;
@@ -67,6 +74,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
                 }
             }
         }
+
 
         // grab textures from the specified technique folders
         for (String path : m_textureFolders){
@@ -98,10 +106,13 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
 //                    textureFiles.Push(textureResourceName);
 //                }
             }
-
-
         }
     }
+
+    Sort(materialFiles.Begin(),materialFiles.End(),CompareString);
+    Sort(techniqueFiles.Begin(),techniqueFiles.End(),CompareString);
+   // Sort(textureFiles.Begin(),techniqueFiles.End(),CompareString);
+
 
     JSONObject tree;
 
@@ -270,7 +281,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
             StringHash hash(textureName);
             String id(hash.Value() % 10000000);
 
-            NodeAddEnumElement(enumElems,String(counter++),textureName,"Texture "+textureName,"COLOR",id);
+            NodeAddEnumElement(enumElems,textureName,textureName,"Texture "+textureName,"COLOR",id);
         }
         NodeAddPropEnum(textureNode,"Texture",enumElems,"0");
 
