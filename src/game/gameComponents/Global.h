@@ -23,6 +23,7 @@ private:
 
     bool activateNavigation;
     bool showNavmesh;
+    bool showPhysics;
 
     NavigationMesh* navMesh;
 

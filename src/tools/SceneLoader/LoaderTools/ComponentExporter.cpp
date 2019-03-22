@@ -43,9 +43,12 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
     ResourceCache* cache = GetSubsystem<ResourceCache>();
     FileSystem* fs = GetSubsystem<FileSystem>();
 
-    Vector<String> materialFiles;
-    Vector<String> techniqueFiles;
-    Vector<String> textureFiles;
+
+
+    materialFiles.Clear();
+    techniqueFiles.Clear();
+    textureFiles.Clear();
+    modelFiles.Clear();
 
     for (String resDir : cache->GetResourceDirs()){
         Vector<String> dirFiles;
@@ -76,35 +79,33 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         }
 
 
-        // grab textures from the specified technique folders
+        // grab models from the specified model folder. all files with .mdl extension are considered a mesh
+        for (String path : m_modelFolders){
+            String dir = resDir+path;
+            fs->ScanDir(dirFiles,dir,"*.mdl",SCAN_FILES,true);
+            for (String foundModel : dirFiles){
+                auto modelResourceName = path+"/"+foundModel;
+                modelFiles.Push(modelResourceName);
+            }
+        }
+
+        // grab textures from the specified texture folders
         for (String path : m_textureFolders){
             String dir = resDir+path;
             fs->ScanDir(dirFiles,dir,"*.jpg",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
                 auto textureResourceName = path+"/"+foundTexture;
                 textureFiles.Push(textureResourceName);
-//                Texture* texture = cache->GetResource<Texture>(textureResourceName);
-//                if (texture){
-//                    textureFiles.Push(textureResourceName);
-//                }
             }
             fs->ScanDir(dirFiles,dir,"*.png",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
                 auto textureResourceName = path+"/"+foundTexture;
                 textureFiles.Push(textureResourceName);
-//                Texture* texture = cache->GetResource<Texture>(textureResourceName);
-//                if (texture){
-//                    textureFiles.Push(textureResourceName);
-//                }
             }
             fs->ScanDir(dirFiles,dir,"*.dds",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
                 auto textureResourceName = path+"/"+foundTexture;
                 textureFiles.Push(textureResourceName);
-//                Texture* texture = cache->GetResource<Texture>(textureResourceName);
-//                if (texture){
-//                    textureFiles.Push(textureResourceName);
-//                }
             }
         }
     }
@@ -112,6 +113,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
     Sort(materialFiles.Begin(),materialFiles.End(),CompareString);
     Sort(techniqueFiles.Begin(),techniqueFiles.End(),CompareString);
    // Sort(textureFiles.Begin(),techniqueFiles.End(),CompareString);
+    Sort(modelFiles.Begin(),modelFiles.End(),CompareString);
 
 
     JSONObject tree;
@@ -131,7 +133,9 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
 
         JSONArray enumElems;
         for (String matName : materialFiles){
-            NodeAddEnumElement(enumElems,matName,matName,"Material "+matName,"MATERIAL");
+            StringHash hash(matName);
+            String id(hash.Value() % 10000000);
+            NodeAddEnumElement(enumElems,matName,matName,"Material "+matName,"MATERIAL",id);
             URHO3D_LOGINFOF("MATERIAL: %s",matName.CString());
         }
         NodeAddPropEnum(predefMaterialNode,"Material",enumElems,"0");
@@ -270,7 +274,9 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         // dropdown to choose techniques available from the resource-path
         JSONArray enumElems;
         for (String techniqueName : techniqueFiles){
-            NodeAddEnumElement(enumElems,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR");
+            StringHash hash(techniqueName);
+            String id(hash.Value() % 10000000);
+            NodeAddEnumElement(enumElems,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id);
         }
 
         NodeAddPropEnum(techniqueNode,"Technique",enumElems,"0");
@@ -343,7 +349,12 @@ void Urho3DNodeTreeExporter::NodeAddProp(JSONObject &node, const String &name, N
 {
     JSONObject prop;
     prop["name"]=name;
-    prop["default"]=defaultValue;
+
+    if (type>=NT_VECTOR2 && type<=NT_COLOR){
+        prop["default"]="("+defaultValue.Replaced(" ",",")+")";
+    } else {
+        prop["default"]=defaultValue;
+    }
 
     switch (type){
         case NT_BOOL: prop["type"] = "bool"; break;
@@ -424,6 +435,11 @@ void Urho3DNodeTreeExporter::AddTechniqueFolder(const String& folder)
 void Urho3DNodeTreeExporter::AddTextureFolder(const String& folder)
 {
     m_textureFolders.Push(folder);
+}
+
+void Urho3DNodeTreeExporter::AddModelFolder(const String& folder)
+{
+    m_modelFolders.Push(folder);
 }
 
 void Urho3DNodeTreeExporter::NodeAddSocket(JSONObject &node, const String &name, NodeSocketType type,bool isInputSocket)
@@ -531,45 +547,79 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
               //  URHO3D_LOGINFOF("\tattr:%s\n", attr.name_.CString());
 
 
+                if (attr.mode_ & AM_NOEDIT)
+                    continue; // ignore no-edit attributes
+
                 JSONObject prop;
+
+                // work around to use new prop-helpers
+                bool alreadyAdded = false;
+
                 prop["name"] = attr.name_;
                 switch (attr.type_){
-                    case VAR_BOOL : prop["type"]="bool"; prop["default"]=attr.defaultValue_.ToString(); break;
+                    case VAR_BOOL :
+                        NodeAddProp(node, attr.name_,NT_BOOL,attr.defaultValue_.ToString()); break;
                     case VAR_INT : {
                         if (!attr.enumNames_) {
-                            prop["type"]="int"; prop["default"]=attr.defaultValue_.ToString();
+                            NodeAddProp(node, attr.name_,NT_INT,attr.defaultValue_.ToString());
                         } else {
-                            prop["type"]="enum"; prop["default"]=attr.defaultValue_.ToString();
-
                             JSONArray elements;
                             for (int idx = 0; attr.enumNames_[idx] != NULL; idx++)
                             {
-                                JSONObject elem;
-                                elem["id"]=attr.enumNames_[idx];
-                                elem["name"]=attr.enumNames_[idx];
-                                elements.Push(elem);
+                                NodeAddEnumElement(elements,attr.enumNames_[idx],attr.enumNames_[idx]);
                             }
-
-                            prop["elements"]=elements;
+                            NodeAddPropEnum(node, attr.name_, elements,attr.defaultValue_.ToString());
                         }
                         break;
                     }
-                    case VAR_FLOAT : prop["type"]="float"; prop["default"]=attr.defaultValue_.ToString();break;
-                    case VAR_STRING : prop["type"]="string"; prop["default"]=attr.defaultValue_.ToString();break;
-                    case VAR_COLOR : prop["type"]="color"; prop["default"]="("+attr.defaultValue_.ToString().Replaced(" ",",")+")";break;
-                    case VAR_VECTOR2 : prop["type"]="vector2";prop["default"]="("+attr.defaultValue_.ToString().Replaced(" ",",")+")"; break;
-                    case VAR_VECTOR3 : prop["type"]="vector3";prop["default"]="("+attr.defaultValue_.ToString().Replaced(" ",",")+")"; break;
-                    case VAR_VECTOR4 : prop["type"]="vector4";prop["default"]="("+attr.defaultValue_.ToString().Replaced(" ",",")+")"; break;
+
+                    case VAR_FLOAT :
+                        NodeAddProp(node, attr.name_,NT_FLOAT,attr.defaultValue_.ToString());break;
+                    case VAR_STRING :
+                        NodeAddProp(node, attr.name_,NT_STRING,attr.defaultValue_.ToString());break;
+                    case VAR_COLOR :
+                        NodeAddProp(node, attr.name_,NT_COLOR,attr.defaultValue_.ToString());break;
+                    case VAR_VECTOR2 :
+                        NodeAddProp(node, attr.name_,NT_VECTOR2,attr.defaultValue_.ToString());break;
+                    case VAR_VECTOR3 :
+                        NodeAddProp(node, attr.name_,NT_VECTOR3,attr.defaultValue_.ToString());break;
+                    case VAR_VECTOR4 :
+                        NodeAddProp(node, attr.name_,NT_VECTOR4,attr.defaultValue_.ToString());break;
+
+                    case VAR_RESOURCEREF :
+                        prop["type"]="string";
+
+                        if (!attr.defaultValue_.GetResourceRef().type_){
+                            prop["default"]="REF_UNKNOWN";
+                        } else {
+                            auto typeName = context_->GetTypeName(attr.defaultValue_.GetResourceRef().type_);
+                            if (typeName=="Model"){
+                                // dropdown to choose techniques available from the resource-path
+                                JSONArray enumElems;
+                                NodeAddEnumElement(enumElems,"None","None","No Mesh","MESH");
+                                NodeAddEnumElement(enumElems,"__Node-Mesh","Node-Mesh","The node's current mesh","MESH","1");
+
+                                for (String model : modelFiles){
+                                    StringHash hash(model);
+                                    String id(hash.Value() % 10000000);
+
+                                    NodeAddEnumElement(enumElems,"Model;"+model,model,"Model "+model,"MESH",id);
+                                }
+
+                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                alreadyAdded = true;
+                            }
+                        }
+                    break;
                     default:
                         URHO3D_LOGINFOF("[%s] Skipping attribute:%s",val->GetTypeName().CString(),attr.name_.CString());
                         continue;
 
                 }
 
-                props.Push(prop);
             }
         }
-        node["props"]=props;
+
         nodes.Push(node);
 
     }
@@ -579,8 +629,8 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
 
 void Urho3DNodeTreeExporter::Export(String filename)
 {
-    auto componentTree = ExportComponents();
     auto materialTree = ExportMaterials();
+    auto componentTree = ExportComponents();
 
     trees.Push(componentTree);
     trees.Push(materialTree);

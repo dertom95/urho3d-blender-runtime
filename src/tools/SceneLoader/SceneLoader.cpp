@@ -139,6 +139,7 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddMaterialFolder("Materials");
     exporter->AddTechniqueFolder("Techniques");
     exporter->AddTextureFolder("Textures");
+    exporter->AddModelFolder("Models");
     exporter->Export(outputPath);
 }
 
@@ -177,6 +178,17 @@ bool SceneLoader::CreateScene()
     }
 
 
+
+    PODVector<Node*> dest;
+    if (scene_->GetNodesWithTag(dest,"setmesh")){
+        for (Node* node : dest){
+            CollisionShape* shape = node->GetComponent<CollisionShape>();
+            if (shape && shape->GetShapeType() == SHAPE_TRIANGLEMESH){
+                StaticModel* model = node->GetComponent<StaticModel>();
+                shape->SetModel(model->GetModel());
+            }
+        }
+    }
     File saveFile(context_, "./scene.write.xml",FILE_WRITE);
     scene_->SaveXML(saveFile);
 

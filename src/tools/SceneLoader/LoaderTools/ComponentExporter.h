@@ -31,6 +31,7 @@ public:
     void AddMaterialFolder(const String& folder);
     void AddTechniqueFolder(const String& folder);
     void AddTextureFolder(const String& folder);
+    void AddModelFolder(const String& folder);
 
     void Export(String filename);
 
@@ -44,7 +45,8 @@ public:
     void AddCustomUIFile(const String& filename);
 
 
-    enum NodeType {NT_BOOL,NT_FLOAT,NT_INT,NT_STRING,NT_VECTOR2,NT_VECTOR3,NT_VECTOR4,NT_COLOR};
+    // don't change the NT_ positions at least not Vectors and colors
+    enum NodeType {NT_BOOL=0,NT_FLOAT=1,NT_INT=2,NT_STRING=3,NT_VECTOR2=4,NT_VECTOR3=5,NT_VECTOR4=6,NT_COLOR=7};
     enum NodeSubType {ST_NONE,ST_PIXEL,ST_UNSIGNED,ST_FACTOR,ST_ANGLE,ST_TIME,ST_DISTANCE};
     enum NodeSocketType {SOCK_FLOAT,SOCK_BOOL,SOCK_STRING,SOCK_VECTOR};
 
@@ -70,5 +72,11 @@ private:
     Vector<String> m_materialFolders;
     Vector<String> m_techniqueFolders;
     Vector<String> m_textureFolders;
+    Vector<String> m_modelFolders;
     Vector<String> m_customUIFilenames;
+
+    Vector<String> materialFiles;
+    Vector<String> techniqueFiles;
+    Vector<String> textureFiles;
+    Vector<String> modelFiles;
 };
