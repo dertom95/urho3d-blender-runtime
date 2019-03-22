@@ -7,7 +7,7 @@ ShapeKey::ShapeKey(Context *ctx)
 
 void ShapeKey::RegisterObject(Context *context)
 {
-    context->RegisterFactory<ShapeKey>();
+    context->RegisterFactory<ShapeKey>("Sample Component");
 
     URHO3D_ATTRIBUTE("shapeKey", String, shapeKey, "", AM_DEFAULT);
     URHO3D_ATTRIBUTE("value", float, value, 0.0f, AM_DEFAULT);

@@ -24,6 +24,9 @@ private:
     Vector3 axis;
     Vector3 rotateAxis;
     float speed;
-
+    float factor;
 };
+
+
+
 

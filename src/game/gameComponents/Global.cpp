@@ -18,7 +18,7 @@ SceneLogic::SceneLogic(Context* context)
 }
 
 void SceneLogic::RegisterObject(Context* context) {
-    context->RegisterFactory<SceneLogic>();
+    context->RegisterFactory<SceneLogic>("game component");
     URHO3D_ATTRIBUTE("activateNavigation", bool, activateNavigation, DEFAULT_ACTIVATE_NAVIGATION, AM_DEFAULT);
     URHO3D_ATTRIBUTE("showNavmesh", bool, showNavmesh, DEFAULT_SHOW_NAVMESH, AM_DEFAULT);
 }

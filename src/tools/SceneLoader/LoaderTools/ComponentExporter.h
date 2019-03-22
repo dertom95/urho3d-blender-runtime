@@ -58,7 +58,7 @@ private:
     void NodeAddSocket(JSONObject& node,const String& name, NodeSocketType type, bool isInputSocket);
 
     bool CheckSuperTypes(const TypeInfo* type);
-
+    String GetTypeCategory(const StringHash& hash,const String& defaultValue);
 
 
     JSONObject fileRoot;

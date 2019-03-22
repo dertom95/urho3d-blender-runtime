@@ -7,7 +7,7 @@ PlayAnimation::PlayAnimation(Context *ctx)
 
 void PlayAnimation::RegisterObject(Context *context)
 {
-    context->RegisterFactory<PlayAnimation>();
+    context->RegisterFactory<PlayAnimation>("Sample Component");
 
     URHO3D_ACCESSOR_ATTRIBUTE("animationFile", GetAnimationFile, SetAnimationFile, String, String::EMPTY, AM_DEFAULT);
     URHO3D_ATTRIBUTE("speed", float, speed, 1.0f, AM_DEFAULT);

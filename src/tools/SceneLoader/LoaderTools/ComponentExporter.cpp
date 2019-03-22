@@ -148,7 +148,37 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeSetData(materialNode,treeID+"__materialNode","Material","Material");
         NodeAddOutputSocket(materialNode,"defs",SOCK_BOOL);
 
+        JSONArray cullModeEnum;
+        NodeAddEnumElement(cullModeEnum,"ccw");
+        NodeAddEnumElement(cullModeEnum,"cw");
+        NodeAddEnumElement(cullModeEnum,"none");
+        // cull-mode
+        NodeAddPropEnum(materialNode,"cull",cullModeEnum,"0");
+        // shadowcull-mode
+        NodeAddPropEnum(materialNode,"shadowcull",cullModeEnum,"0");
+
+        JSONArray fillEnum;
+        NodeAddEnumElement(fillEnum,"solid");
+        NodeAddEnumElement(fillEnum,"wireframe");
+        NodeAddEnumElement(fillEnum,"point");
+        // fill-mode
+        NodeAddPropEnum(materialNode,"fill",fillEnum,"0");
+
         nodes.Push(materialNode);
+    }
+
+    {
+        // --------------------------------
+        // ---  DepthBias NODE   ---
+        // --------------------------------
+        JSONObject depthBiasNode;
+
+        NodeSetData(depthBiasNode,treeID+"__DepthBiasNode","DepthBias","Material");
+        NodeAddInputSocket(depthBiasNode,"Material",SOCK_BOOL);
+        NodeAddProp(depthBiasNode,"constant",NT_FLOAT,"0");
+        NodeAddProp(depthBiasNode,"slopescaled",NT_FLOAT,"0");
+
+        nodes.Push(depthBiasNode);
     }
 
     {
@@ -202,8 +232,8 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeAddProp(customParameterNode,"MatDiffColor",NT_COLOR,"(1,1,1,1)");
         NodeAddProp(customParameterNode,"MatSpecColor",NT_COLOR,"(0.1,0.1,0.1,1)");
         NodeAddProp(customParameterNode,"MatEmissiveColor",NT_COLOR,"(0,0,0,1)");
-        NodeAddProp(customParameterNode,"UOffset",NT_FLOAT,"0",ST_FACTOR);
-        NodeAddProp(customParameterNode,"VOffset",NT_FLOAT,"0",ST_FACTOR);
+        NodeAddProp(customParameterNode,"UOffset",NT_FLOAT,"1",ST_FACTOR);
+        NodeAddProp(customParameterNode,"VOffset",NT_FLOAT,"1",ST_FACTOR);
 
         nodes.Push(customParameterNode);
     }
@@ -242,9 +272,12 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         for (String techniqueName : techniqueFiles){
             NodeAddEnumElement(enumElems,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR");
         }
+
         NodeAddPropEnum(techniqueNode,"Technique",enumElems,"0");
         // quality
-        NodeAddProp(techniqueNode,"quality",NT_INT,"0",ST_NONE,3,0,5);
+        NodeAddProp(techniqueNode,"quality",NT_INT,"0",ST_NONE,3,0,2);
+        // lod distance
+        NodeAddProp(techniqueNode,"distance",NT_INT,"0",ST_NONE,3,0,200);
 
         NodeAddInputSocket(techniqueNode,"material",SOCK_BOOL);
 
@@ -427,6 +460,16 @@ void Urho3DNodeTreeExporter::NodeAddOutputSocket(JSONObject &node, const String 
     NodeAddSocket(node,name,type,false);
 }
 
+String  Urho3DNodeTreeExporter::GetTypeCategory(const StringHash& hash,const String& defaultValue){
+    const HashMap<String, Vector<StringHash> >& objectCategories = context_->GetObjectCategories();
+    for (HashMap<String, Vector<StringHash> >::ConstIterator i = objectCategories.Begin(); i != objectCategories.End(); ++i)
+    {
+        if (i->second_.Contains(hash))
+            return i->first_;
+    }
+    return defaultValue;
+}
+
 JSONObject Urho3DNodeTreeExporter::ExportComponents()
 {
     const HashMap<StringHash, SharedPtr<ObjectFactory> >& objFactories = context_->GetObjectFactories();
@@ -471,7 +514,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
 
         if (val->GetTypeInfo()->IsTypeOf(Component::GetTypeInfoStatic())){
        //     URHO3D_LOGINFOF("TYPE:%s\n",val->GetTypeName().CString());
-            node["category"]="Component";
+            node["category"]=GetTypeCategory(val->GetTypeInfo()->GetType(),"Misc");
         } else {
        //     URHO3D_LOGINFOF("NO COMPONENT: TYPE:%s\n",val->GetTypeName().CString());
         }

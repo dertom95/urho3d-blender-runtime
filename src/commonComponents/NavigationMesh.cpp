@@ -31,7 +31,7 @@ CNavigationMesh::CNavigationMesh(Context* context)
 }
 
 void CNavigationMesh::RegisterObject(Context* context) {
-    context->RegisterFactory<CNavigationMesh>();
+    context->RegisterFactory<CNavigationMesh>("Sample Component");
     //URHO3D_ACCESSOR_ATTRIBUTE("Speed", GetSpeed, SetSpeed, float,1.5f,AM_DEFAULT);
     URHO3D_ENUM_ACCESSOR_ATTRIBUTE("Navmesh Type",GetNavmeshType,SetNavmeshType,NavMeshType,typeNames,DEFAULT_NAVMESHTYPE,AM_DEFAULT);
     URHO3D_ATTRIBUTE("activateNavigation", bool, activateNavigation, false, AM_DEFAULT);

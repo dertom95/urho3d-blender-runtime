@@ -173,7 +173,7 @@ bool SceneLoader::CreateScene()
         lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
         Light* light = lightNode->CreateComponent<Light>();
         light->SetLightType(LIGHT_DIRECTIONAL);
-        light->SetColor(Color::RED);
+        //light->SetColor(Color::RED);
     }
 
 
@@ -203,7 +203,7 @@ void SceneLoader::ReloadScene()
         lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
         Light* light = lightNode->CreateComponent<Light>();
         light->SetLightType(LIGHT_DIRECTIONAL);
-        light->SetColor(Color::RED);
+     //   light->SetColor(Color::RED);
     }
 
 
