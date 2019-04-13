@@ -50,9 +50,12 @@ SceneLoader::SceneLoader(Context* context) :
     Sample(context)
     ,sceneName("Scene.xml")
     ,exportPath("./urho3d_components.json")
+    ,currentCamId(0)
+    ,updatedCamera(false)
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
+
     // register group instance component
     CommonComponents::RegisterComponents(context);
     GameComponents::RegisterComponents(context);
@@ -64,6 +67,10 @@ void SceneLoader::Start()
     auto args = GetArguments();
     ResourceCache* cache = GetSubsystem<ResourceCache>();
     Globals::instance()->cache=cache;
+
+    FileSystem* fs = context_->GetSubsystem<FileSystem>();
+
+    URHO3D_LOGINFOF("[SceneLoader] Current dir:%s",fs->GetCurrentDir().CString());
 
     for (int i=0;i < args.Size(); i++){
         String arg = args[i];
@@ -87,6 +94,12 @@ void SceneLoader::Start()
         else if (args[i]=="--componentexport" && (i+1)<args.Size()){
             exportPath = args[i+1];
             i++;
+            URHO3D_LOGINFOF("[SceneLoader] exportPath: %s",exportPath.CString());
+        }
+        else if (args[i]=="--customui" && (i+1)<args.Size()){
+            customUI = args[i+1];
+            i++;
+            URHO3D_LOGINFOF("[SceneLoader] customui: %s",customUI.CString());
         }
 
     }
@@ -121,7 +134,7 @@ void SceneLoader::ExportComponents(const String& outputPath)
 
     // include all Components that inherit from LogicComponent
     exporter->AddSuperComponentHashToFilterList(LogicComponent::GetTypeStatic());
-
+    // explicitly export those components
     exporter->AddComponentHashToFilterList(Light::GetTypeStatic());
     exporter->AddComponentHashToFilterList(RigidBody::GetTypeStatic());
     exporter->AddComponentHashToFilterList(CollisionShape::GetTypeStatic());
@@ -134,12 +147,17 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddComponentHashToFilterList(PhysicsWorld::GetTypeStatic());
     exporter->AddComponentHashToFilterList(DebugRenderer::GetTypeStatic());
     exporter->AddComponentHashToFilterList(Zone::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(AnimationController::GetTypeStatic());
 
     exporter->AddCustomUIFile("./customui.py");
     exporter->AddMaterialFolder("Materials");
     exporter->AddTechniqueFolder("Techniques");
     exporter->AddTextureFolder("Textures");
     exporter->AddModelFolder("Models");
+    exporter->AddAnimationFolder("Models");
+    if (!customUI.Empty()){
+        exporter->AddCustomUIFile(customUI);
+    }
     exporter->Export(outputPath);
 }
 
@@ -171,9 +189,15 @@ bool SceneLoader::CreateScene()
 
     if (sceneLights.Size()==0){
         Node* lightNode = scene_->CreateChild("DirectionalLight");
-        lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+
+        //lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+        lightNode->SetRotation(Quaternion(18.0f,55.0f,-17.0f));
         Light* light = lightNode->CreateComponent<Light>();
         light->SetLightType(LIGHT_DIRECTIONAL);
+        light->SetCastShadows(true);
+        light->SetShadowBias(BiasParameters(0.00025f, 0.5f));
+        light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
+        light->SetSpecularIntensity(0.5f);
         //light->SetColor(Color::RED);
     }
 
@@ -192,11 +216,16 @@ bool SceneLoader::CreateScene()
     File saveFile(context_, "./scene.write.xml",FILE_WRITE);
     scene_->SaveXML(saveFile);
 
+
+
     return true;
 }
 
+
+
 void SceneLoader::ReloadScene()
 {
+    updatedCamera = false;
     ResourceCache* cache = GetSubsystem<ResourceCache>();
 
     SharedPtr<File> file = cache->GetFile("Scenes/Scene.xml");
@@ -212,15 +241,29 @@ void SceneLoader::ReloadScene()
 
     if (sceneLights.Size()==0){
         Node* lightNode = scene_->CreateChild("DirectionalLight");
-        lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+        lightNode->SetRotation(Quaternion(18.0f,55.0f,-17.0f));
+
+        //lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
         Light* light = lightNode->CreateComponent<Light>();
         light->SetLightType(LIGHT_DIRECTIONAL);
+        light->SetCastShadows(true);
+        light->SetShadowBias(BiasParameters(0.00025f, 0.5f));
+        light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
+        light->SetSpecularIntensity(0.5f);
      //   light->SetColor(Color::RED);
     }
 
+    UpdateCameras();
 
     File saveFile(context_, "./scene.write.xml",FILE_WRITE);
     scene_->SaveXML(saveFile);
+}
+
+void SceneLoader::UpdateCameras()
+{
+    cameras.Clear();
+    cameras.Push(Globals::instance()->camera);
+    scene_->GetComponents<Camera>(cameras,true);
 }
 
 void SceneLoader::CreateUI()
@@ -282,23 +325,25 @@ void SceneLoader::MoveCamera(float timeStep)
     if (!ui->GetCursor()->IsVisible())
     {
         IntVector2 mouseMove = input->GetMouseMove();
-        yaw_ += MOUSE_SENSITIVITY * mouseMove.x_;
-        pitch_ += MOUSE_SENSITIVITY * mouseMove.y_;
+        yaw_ += MOUSE_SENSITIVITY * mouseMove.x_ * 0.75f;
+        pitch_ += MOUSE_SENSITIVITY * mouseMove.y_ * 0.75f;
         pitch_ = Clamp(pitch_, -90.0f, 90.0f);
 
         // Construct new orientation for the camera scene node from yaw and pitch. Roll is fixed to zero
         cameraNode_->SetRotation(Quaternion(pitch_, yaw_, 0.0f));
     }
 
+    float moveSpeed = input->GetMouseButtonDown(MOUSEB_RIGHT)?0.25f:1.0f;
+
     // Read WASD keys and move the camera scene node to the corresponding direction if they are pressed
     if (input->GetKeyDown(KEY_W))
-        cameraNode_->Translate(Vector3::FORWARD * MOVE_SPEED * timeStep);
+        cameraNode_->Translate(Vector3::FORWARD * MOVE_SPEED * timeStep *moveSpeed);
     if (input->GetKeyDown(KEY_S))
-        cameraNode_->Translate(Vector3::BACK * MOVE_SPEED * timeStep);
+        cameraNode_->Translate(Vector3::BACK * MOVE_SPEED * timeStep*moveSpeed);
     if (input->GetKeyDown(KEY_A))
-        cameraNode_->Translate(Vector3::LEFT * MOVE_SPEED * timeStep);
+        cameraNode_->Translate(Vector3::LEFT * MOVE_SPEED * timeStep*moveSpeed);
     if (input->GetKeyDown(KEY_D))
-        cameraNode_->Translate(Vector3::RIGHT * MOVE_SPEED * timeStep);
+        cameraNode_->Translate(Vector3::RIGHT * MOVE_SPEED * timeStep*moveSpeed);
 }
 
 void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
@@ -322,7 +367,32 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
     float timeStep = eventData[P_TIMESTEP].GetFloat();
 
     // Move the camera, scale movement with time step
-    MoveCamera(timeStep);
+    if (currentCamId==0){
+        MoveCamera(timeStep);
+    }
+
+    Input* input = GetSubsystem<Input>();
+    if (input->GetKeyPress(KEY_C)){
+        URHO3D_LOGINFO("CAMERA CHANGE");
+        currentCamId++;
+        if (currentCamId>=cameras.Size()){
+            currentCamId = 0;
+        }
+        if (currentCamId == 0){
+            Sample::InitMouseMode(MM_FREE);
+        } else {
+            Sample::InitMouseMode(MM_RELATIVE);
+        }
+        Renderer* renderer = GetSubsystem<Renderer>();
+        Viewport* viewport = renderer->GetViewport(0);
+        viewport->SetCamera(cameras[currentCamId]);
+    }
+
+    if (!updatedCamera){
+        UpdateCameras();
+        updatedCamera = false;
+    }
+
 }
 
 

@@ -71,7 +71,14 @@ private:
 
     void HandleFileChanged(StringHash eventType, VariantMap& eventData);
 
+    void UpdateCameras();
+
     String sceneName;
     Vector<String> runtimeFlags;
     String exportPath;
+    String customUI;
+
+    int currentCamId;
+    bool updatedCamera;
+    PODVector<Camera*> cameras;
 };

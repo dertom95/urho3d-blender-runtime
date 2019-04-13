@@ -4,7 +4,6 @@
 #include "base64.h"
 #include <Urho3D/Container/Sort.h>
 
-
 Urho3DNodeTreeExporter::Urho3DNodeTreeExporter(Context* context, ExportMode exportMode)
     : Object(context),
       m_exportMode(exportMode)
@@ -36,14 +35,10 @@ bool CompareString(const String& a,const String& b){
     return a < b;
 }
 
-JSONObject Urho3DNodeTreeExporter::ExportMaterials()
+void Urho3DNodeTreeExporter::ProcessFileSystem()
 {
-    const String treeID="urho3dmaterials";
-
     ResourceCache* cache = GetSubsystem<ResourceCache>();
     FileSystem* fs = GetSubsystem<FileSystem>();
-
-
 
     materialFiles.Clear();
     techniqueFiles.Clear();
@@ -89,6 +84,25 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
             }
         }
 
+        // grab models from the specified model folder. all files with .mdl extension are considered a mesh
+        for (String path : m_modelFolders){
+            String dir = resDir+path;
+            fs->ScanDir(dirFiles,dir,"*.mdl",SCAN_FILES,true);
+            for (String foundModel : dirFiles){
+                auto modelResourceName = path+"/"+foundModel;
+                modelFiles.Push(modelResourceName);
+            }
+        }
+
+        for (String path : m_animationFolders){
+            String dir = resDir+path;
+            fs->ScanDir(dirFiles,dir,"*.ani",SCAN_FILES,true);
+            for (String foundAnim : dirFiles){
+                auto animResourceName = path+"/"+foundAnim;
+                animationFiles.Push(animResourceName);
+            }
+        }
+
         // grab textures from the specified texture folders
         for (String path : m_textureFolders){
             String dir = resDir+path;
@@ -108,12 +122,19 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
                 textureFiles.Push(textureResourceName);
             }
         }
+
     }
 
     Sort(materialFiles.Begin(),materialFiles.End(),CompareString);
     Sort(techniqueFiles.Begin(),techniqueFiles.End(),CompareString);
    // Sort(textureFiles.Begin(),techniqueFiles.End(),CompareString);
     Sort(modelFiles.Begin(),modelFiles.End(),CompareString);
+    Sort(animationFiles.Begin(),animationFiles.End(),CompareString);
+}
+
+JSONObject Urho3DNodeTreeExporter::ExportMaterials()
+{
+    const String treeID="urho3dmaterials";
 
 
     JSONObject tree;
@@ -331,8 +352,6 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         nodes.Push(textureNode);
     }
 
-    // TODO: create a nodes-builder or similars!?
-
     tree["nodes"]=nodes;
 
     return tree;
@@ -358,8 +377,8 @@ void Urho3DNodeTreeExporter::NodeAddProp(JSONObject &node, const String &name, N
 
     switch (type){
         case NT_BOOL: prop["type"] = "bool"; break;
-        case NT_INT: prop["type"] = "int"; prop["min"]=(int)min; prop["max"]=(int)max;break;
-        case NT_FLOAT: prop["type"] = "float"; prop["min"]=min; prop["max"]=max;prop["precision"]=precission;break;
+        case NT_INT: prop["type"] = "int"; if (min>max) {prop["min"]=(int)min; prop["max"]=(int)max;}break;
+        case NT_FLOAT: prop["type"] = "float"; if (min>max) {prop["min"]=min; prop["max"]=max;}prop["precision"]=precission;break;
         case NT_VECTOR2: prop["type"] = "vector2"; break;
         case NT_VECTOR3: prop["type"] = "vector3"; break;
         case NT_VECTOR4: prop["type"] = "vector4"; break;
@@ -440,6 +459,11 @@ void Urho3DNodeTreeExporter::AddTextureFolder(const String& folder)
 void Urho3DNodeTreeExporter::AddModelFolder(const String& folder)
 {
     m_modelFolders.Push(folder);
+}
+
+void Urho3DNodeTreeExporter::AddAnimationFolder(const String& folder)
+{
+    m_animationFolders.Push(folder);
 }
 
 void Urho3DNodeTreeExporter::NodeAddSocket(JSONObject &node, const String &name, NodeSocketType type,bool isInputSocket)
@@ -588,7 +612,6 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
 
                     case VAR_RESOURCEREF :
                         prop["type"]="string";
-
                         if (!attr.defaultValue_.GetResourceRef().type_){
                             prop["default"]="REF_UNKNOWN";
                         } else {
@@ -609,6 +632,57 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                 NodeAddPropEnum(node,attr.name_,enumElems,"0");
                                 alreadyAdded = true;
                             }
+                            else if (typeName == "Animation")
+                            {
+                                // dropdown to choose techniques available from the resource-path
+                                JSONArray enumElems;
+                                NodeAddEnumElement(enumElems,"none","None","No Animation","ANIM");
+
+                                for (String anim : animationFiles){
+                                    StringHash hash(anim);
+                                    String id(hash.Value() % 10000000);
+
+                                    NodeAddEnumElement(enumElems,"Animation;"+anim,anim,"Animation "+anim,"ANIM",id);
+                                }
+
+                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                alreadyAdded = true;
+
+                            }
+                            else if (typeName == "Texture")
+                            {
+                                // dropdown to choose techniques available from the resource-path
+                                JSONArray enumElems;
+                                NodeAddEnumElement(enumElems,"none","None","No Texture","TEXTURE");
+
+                                for (String tex : textureFiles){
+                                    StringHash hash(tex);
+                                    String id(hash.Value() % 10000000);
+
+                                    NodeAddEnumElement(enumElems,"Texture;"+tex,tex,"Texture "+tex,"TEXTURE",id);
+                                }
+
+                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                alreadyAdded = true;
+
+                            }
+                            else if (typeName == "Material")
+                            {
+                                // dropdown to choose techniques available from the resource-path
+                                JSONArray enumElems;
+                                NodeAddEnumElement(enumElems,"none","None","No Material","MATERIAL");
+
+                                for (String mat : materialFiles){
+                                    StringHash hash(mat);
+                                    String id(hash.Value() % 10000000);
+
+                                    NodeAddEnumElement(enumElems,"Material;"+mat,mat,"Material "+mat,"MATERIAL",id);
+                                }
+
+                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                alreadyAdded = true;
+
+                            }
                         }
                     break;
                     default:
@@ -627,10 +701,37 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
     return tree;
 }
 
+JSONObject Urho3DNodeTreeExporter::ExportGlobalData(){
+    JSONObject globalData;
+
+    // dropdown to choose techniques available from the resource-path
+    JSONArray techniques;
+    for (String techniqueName : techniqueFiles){
+        StringHash hash(techniqueName);
+        String id(hash.Value() % 10000000);
+        NodeAddEnumElement(techniques,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id);
+    }
+    globalData["techniques"] = techniques;
+
+    JSONArray textures;
+    for (String textureName : textureFiles){
+        StringHash hash(textureName);
+        String id(hash.Value() % 10000000);
+
+        NodeAddEnumElement(textures,textureName,textureName,"Texture "+textureName,"COLOR",id);
+    }
+    globalData["textures"] = textures;
+
+    return globalData;
+}
+
 void Urho3DNodeTreeExporter::Export(String filename)
 {
+    ProcessFileSystem();
+
     auto materialTree = ExportMaterials();
     auto componentTree = ExportComponents();
+    auto globalData = ExportGlobalData();
 
     trees.Push(componentTree);
     trees.Push(materialTree);
@@ -665,6 +766,7 @@ void Urho3DNodeTreeExporter::Export(String filename)
     }
 
     fileRoot["trees"]=trees;
+    fileRoot["globalData"]=globalData;
 
     JSONFile file(context_);
     file.GetRoot() = fileRoot;

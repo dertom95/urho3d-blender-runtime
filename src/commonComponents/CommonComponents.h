@@ -7,6 +7,8 @@
 #include <tools/SceneLoader/SampleComponents/Rotator.h>
 #include <tools/SceneLoader/SampleComponents/PlayAnimation.h>
 #include <tools/SceneLoader/SampleComponents/ShapeKey.h>
+#include <tools/SceneLoader/SampleComponents/ParentBone.h>
+
 
 using namespace Urho3D;
 
@@ -22,4 +24,6 @@ void CommonComponents::RegisterComponents(Context *context)
     Rotator::RegisterObject(context);
     PlayAnimation::RegisterObject(context);
     ShapeKey::RegisterObject(context);
+    ParentBone::RegisterObject(context);
+
 }
