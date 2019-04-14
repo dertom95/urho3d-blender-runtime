@@ -108,18 +108,24 @@ void Urho3DNodeTreeExporter::ProcessFileSystem()
             String dir = resDir+path;
             fs->ScanDir(dirFiles,dir,"*.jpg",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
-                auto textureResourceName = path+"/"+foundTexture;
-                textureFiles.Push(textureResourceName);
+                ExportPath p;
+                p.absFilepath = dir +"/"+foundTexture;
+                p.resFilepath = path+"/"+foundTexture;
+                textureFiles.Push(p);
             }
             fs->ScanDir(dirFiles,dir,"*.png",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
-                auto textureResourceName = path+"/"+foundTexture;
-                textureFiles.Push(textureResourceName);
+                ExportPath p;
+                p.absFilepath = dir +"/"+foundTexture;
+                p.resFilepath = path+"/"+foundTexture;
+                textureFiles.Push(p);
             }
             fs->ScanDir(dirFiles,dir,"*.dds",SCAN_FILES,true);
             for (String foundTexture : dirFiles){
-                auto textureResourceName = path+"/"+foundTexture;
-                textureFiles.Push(textureResourceName);
+                ExportPath p;
+                p.absFilepath = dir +"/"+foundTexture;
+                p.resFilepath = path+"/"+foundTexture;
+                textureFiles.Push(p);
             }
         }
 
@@ -337,13 +343,13 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         // dropdown to choose textures available from the resource-path
         JSONArray enumElems;
         int counter=0;
-        for (String textureName : textureFiles){
-            StringHash hash(textureName);
+        for (ExportPath texture : textureFiles){
+            StringHash hash(texture.resFilepath);
             String id(hash.Value() % 10000000);
 
-            NodeAddEnumElement(enumElems,textureName,textureName,"Texture "+textureName,"COLOR",id);
+            NodeAddEnumElement(enumElems,texture.resFilepath,texture.resFilepath,texture.absFilepath,"COLOR",id);
         }
-        NodeAddPropEnum(textureNode,"Texture",enumElems,"0");
+        NodeAddPropEnum(textureNode,"Texture",enumElems,"0",true);
 
 
 
@@ -410,11 +416,11 @@ void Urho3DNodeTreeExporter::NodeAddProp(JSONObject &node, const String &name, N
     node["props"]=props;
 }
 
-void Urho3DNodeTreeExporter::NodeAddPropEnum(JSONObject &node, const String &name, JSONArray &elements, const String &defaultValue)
+void Urho3DNodeTreeExporter::NodeAddPropEnum(JSONObject &node, const String &name, JSONArray &elements, const String &defaultValue, bool isPreview)
 {
     JSONObject prop;
     prop["name"]=name;
-    prop["type"]="enum";
+    prop["type"]=isPreview?"enumPreview":"enum";
     prop["elements"]=elements;
     prop["default"]=defaultValue;
 
@@ -655,11 +661,11 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                 JSONArray enumElems;
                                 NodeAddEnumElement(enumElems,"none","None","No Texture","TEXTURE");
 
-                                for (String tex : textureFiles){
-                                    StringHash hash(tex);
+                                for (ExportPath tex : textureFiles){
+                                    StringHash hash(tex.resFilepath);
                                     String id(hash.Value() % 10000000);
 
-                                    NodeAddEnumElement(enumElems,"Texture;"+tex,tex,"Texture "+tex,"TEXTURE",id);
+                                    NodeAddEnumElement(enumElems,"Texture;"+tex.resFilepath,tex.resFilepath,tex.absFilepath,"TEXTURE",id);
                                 }
 
                                 NodeAddPropEnum(node,attr.name_,enumElems,"0");
@@ -714,11 +720,11 @@ JSONObject Urho3DNodeTreeExporter::ExportGlobalData(){
     globalData["techniques"] = techniques;
 
     JSONArray textures;
-    for (String textureName : textureFiles){
-        StringHash hash(textureName);
+    for (ExportPath texture : textureFiles){
+        StringHash hash(texture.resFilepath);
         String id(hash.Value() % 10000000);
 
-        NodeAddEnumElement(textures,textureName,textureName,"Texture "+textureName,"COLOR",id);
+        NodeAddEnumElement(textures,texture.resFilepath,texture.resFilepath,texture.absFilepath,"COLOR",id);
     }
     globalData["textures"] = textures;
 
