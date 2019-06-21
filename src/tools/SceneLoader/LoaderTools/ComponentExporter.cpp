@@ -655,7 +655,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                 alreadyAdded = true;
 
                             }
-                            else if (typeName == "Texture")
+                            else if (typeName == "Texture2D")
                             {
                                 // dropdown to choose techniques available from the resource-path
                                 JSONArray enumElems;

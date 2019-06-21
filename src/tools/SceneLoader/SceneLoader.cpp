@@ -40,7 +40,6 @@
 #include "commonComponents/CommonComponents.h"
 
 #include "SampleComponents/PlayAnimation.h"
-#include "SampleComponents/Rotator.h"
 #include "game/gameComponents/GameComponents.h"
 #include <Globals.h>
 
