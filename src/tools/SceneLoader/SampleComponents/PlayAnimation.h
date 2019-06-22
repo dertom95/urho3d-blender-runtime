@@ -14,6 +14,9 @@ public:
     const String& GetAnimationFile() const { return animationFile; }
     virtual void DelayedStart() override;
 
+    void SetAnimation(const ResourceRef& value);
+    ResourceRef GetAnimation() const;
+
 private:
     String animationFile;
     float speed;

@@ -9,7 +9,8 @@ void PlayAnimation::RegisterObject(Context *context)
 {
     context->RegisterFactory<PlayAnimation>("Sample Component");
 
-    URHO3D_ACCESSOR_ATTRIBUTE("animationFile", GetAnimationFile, SetAnimationFile, String, String::EMPTY, AM_DEFAULT);
+    URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Animation", GetAnimation, SetAnimation, ResourceRef, ResourceRef(Animation::GetTypeStatic()), AM_DEFAULT);
+    //URHO3D_ACCESSOR_ATTRIBUTE("animationFile", GetAnimationFile, SetAnimationFile, String, String::EMPTY, AM_DEFAULT);
     URHO3D_ATTRIBUTE("speed", float, speed, 1.0f, AM_DEFAULT);
 }
 
@@ -44,4 +45,14 @@ void PlayAnimation::DelayedStart()
     animControl->PlayExclusive(animFile,0, true, 0.0f);
     animControl->SetSpeed(animFile,speed);
     animControl->SetAnimationEnabled(true);
+}
+
+ResourceRef PlayAnimation::GetAnimation() const
+{
+    return ResourceRef(Animation::GetTypeStatic(),animationFile);
+}
+
+void PlayAnimation::SetAnimation(const ResourceRef &value)
+{
+    animationFile = value.name_;
 }

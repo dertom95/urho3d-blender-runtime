@@ -20,66 +20,39 @@
 // THE SOFTWARE.
 //
 
-#include "DummyComponent.h"
+#include "Rotator.h"
 
 #include <Urho3D/Urho3DAll.h>
 
 
-DummyComponent::DummyComponent(Context* context) :
+Rotator::Rotator(Context* context) :
     LogicComponent(context),
-    boolValue_(DEFAULT_BOOL_VALUE),
-    intValue_(DEFAULT_INT_VALUE),
-    floatValue_(DEFAULT_FLOAT_VALUE),
-    stringValue_(DEFAULT_STRING_VALUE)
+    speed_(DEFAULT_ROTATOR_SPEED)
 {
     // Only the physics update event is needed: unsubscribe from the rest for optimization
     SetUpdateEventMask(USE_UPDATE);
 }
 
-void DummyComponent::RegisterObject(Context* context)
+void Rotator::RegisterObject(Context* context)
 {
-    context->RegisterFactory<DummyComponent>("Sample Component");
+    context->RegisterFactory<Rotator>("Sample Component");
 
     // These macros register the class attributes to the Context for automatic load / save handling.
     // We specify the Default attribute mode which means it will be used both for saving into file, and network replication
-    URHO3D_ATTRIBUTE("BOOL VALUE", bool, boolValue_, DEFAULT_BOOL_VALUE, AM_FILE);
-    URHO3D_ATTRIBUTE("INT VALUE", int, intValue_, DEFAULT_INT_VALUE, AM_FILE);
-    URHO3D_ATTRIBUTE("FLOAT VALUE", float, floatValue_, DEFAULT_FLOAT_VALUE, AM_FILE);
-    URHO3D_ATTRIBUTE("STRING VALUE", String, stringValue_, DEFAULT_STRING_VALUE, AM_FILE);
-    //URHO3D_ATTRIBUTE("Anim Run", String, animRun_, "", AM_DEFAULT);
-    URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Animation", GetAnimation, SetAnimation, ResourceRef, ResourceRef(Animation::GetTypeStatic()), AM_DEFAULT);
-    URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Texture", GetTexture, SetTexture, ResourceRef, ResourceRef(Texture2D::GetTypeStatic()), AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Axis", Vector3, axis_ , Vector3::ZERO, AM_FILE);
+    URHO3D_ATTRIBUTE("Speed", float, speed_, DEFAULT_ROTATOR_SPEED, AM_FILE);
 }
 
-void DummyComponent::DelayedStart()
+void Rotator::DelayedStart()
 {
     // init whatever you want. at this point all nodes are already handled
     URHO3D_LOGINFO("STARTED");
     int a=0;
 }
 
-void DummyComponent::Update(float timeStep)
+void Rotator::Update(float timeStep)
 {
+    node_->Rotate(Quaternion(axis_.x_*speed_*timeStep,axis_.y_*speed_*timeStep,axis_.z_*speed_*timeStep));
     // do the logic here
 
-}
-
-ResourceRef DummyComponent::GetAnimation() const
-{
-    return ResourceRef(Animation::GetTypeStatic(),animationName_);
-}
-
-void DummyComponent::SetAnimation(const ResourceRef &value)
-{
-    animationName_ = value.name_;
-}
-
-ResourceRef DummyComponent::GetTexture() const
-{
-    return ResourceRef(Texture::GetTypeStatic(),textureName_);
-}
-
-void DummyComponent::SetTexture(const ResourceRef &value)
-{
-    textureName_ = value.name_;
 }

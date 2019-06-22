@@ -7,6 +7,7 @@
 #include <tools/SceneLoader/SampleComponents/PlayAnimation.h>
 #include <tools/SceneLoader/SampleComponents/ShapeKey.h>
 #include <tools/SceneLoader/SampleComponents/DummyComponent.h>
+#include <tools/SceneLoader/SampleComponents/Rotator.h>
 #include <commonComponents/ParentBone.h>
 
 
@@ -25,4 +26,5 @@ void CommonComponents::RegisterComponents(Context *context)
     ShapeKey::RegisterObject(context);
     ParentBone::RegisterObject(context);
     DummyComponent::RegisterObject(context);
+    Rotator::RegisterObject(context);
 }
