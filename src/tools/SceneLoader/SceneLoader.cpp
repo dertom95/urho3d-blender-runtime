@@ -54,6 +54,9 @@ SceneLoader::SceneLoader(Context* context) :
     ,updatedCamera(false)
     ,editorVisible_(false)
 
+    ,screenshotInterval(2.0f)
+    ,screenshotTimer(0.0f)
+    ,automaticIntervallScreenshots(false)
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -81,6 +84,7 @@ void SceneLoader::Start()
         if (args[i]=="--workingdir" && (i+1)<args.Size()){
             String workpath = args[i+1];
             cache->AddResourceDir(workpath,0);
+            additionalResourcePath = workpath;
             i++;
             URHO3D_LOGINFOF("[SceneLoader] added resourcepath:%s",workpath.CString());
         }
@@ -223,7 +227,6 @@ bool SceneLoader::CreateScene()
     scene_->SaveXML(saveFile);
 
 
-
     return true;
 }
 
@@ -263,6 +266,8 @@ void SceneLoader::ReloadScene()
 
     File saveFile(context_, "./scene.write.xml",FILE_WRITE);
     scene_->SaveXML(saveFile);
+
+
 }
 
 void SceneLoader::UpdateCameras()
@@ -360,6 +365,23 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
     if (resName=="Scenes/Scene.xml"){
         ReloadScene();
     }
+    else if (resName=="req2engine.json"){
+        JSONFile json(context_);
+        if (json.LoadFile(filename)){
+            HandleRequestFromBlender(json.GetRoot().GetObject());
+
+            FileSystem* f = GetSubsystem<FileSystem>();
+            f->Delete(filename);
+
+            if (additionalResourcePath!=""){
+                JSONFile* file = new JSONFile(context_);
+                JSONObject responseToBlender;
+                responseToBlender["action"]="reload_screenshot";
+                file->GetRoot()=responseToBlender;
+                file->SaveFile(additionalResourcePath+"/runtime2blender.json");
+            }
+        }
+    }
 
     URHO3D_LOGINFOF("File Changed: fn:%s resname:%s",filename.CString(),resName.CString());
 }
@@ -404,7 +426,87 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
         updatedCamera = false;
     }
 
+    if (automaticIntervallScreenshots){
+        screenshotTimer-=timeStep;
+        if (screenshotTimer<=0){
+            CreateScreenshot();
+            screenshotTimer = screenshotInterval;
+        }
+    }
 
+}
+
+void SceneLoader::CreateScreenshot()
+{
+    if (additionalResourcePath=="") return;
+
+    Graphics* graphics = GetSubsystem<Graphics>();
+    Image screenshot(context_);
+    graphics->TakeScreenShot(screenshot);
+    // Here we save in the Data folder with date and time appended
+//    screenshot.SavePNG(GetSubsystem<FileSystem>()->GetProgramDir() + "Data/Screenshot_" +
+//        Time::GetTimeStamp().Replaced(':', '_').Replaced('.', '_').Replaced(' ', '_') + ".png");
+    String screenshotPath = additionalResourcePath+"/Screenshot.png";
+    screenshot.SavePNG(screenshotPath);
+    URHO3D_LOGINFOF("Save screenshot to %s",screenshotPath.CString());
+}
+
+Vector4 JSON2Vec4(const JSONObject& v){
+    return Vector4(v["x"]->GetFloat(),v["y"]->GetFloat(),v["z"]->GetFloat(),v["w"]->GetFloat());
+}
+
+void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
+{
+    if (json.Contains("view_matrix")){
+        JSONArray matrix = json["matrix"]->GetArray();
+        Vector4 v1 = JSON2Vec4(matrix[0].GetObject());
+        Vector4 v2 = JSON2Vec4(matrix[1].GetObject());
+        Vector4 v3 = JSON2Vec4(matrix[2].GetObject());
+        Vector4 v4 = JSON2Vec4(matrix[3].GetObject());
+
+
+        Matrix4 pmat(v1.x_,v1.y_,v1.z_,v1.w_,
+                    v2.x_,v2.y_,v2.z_,v2.w_,
+                    v3.x_,v3.y_,v3.z_,v3.w_,
+                    v4.x_,v4.y_,v4.z_,v4.w_);
+
+
+        JSONArray matrix2 = json["view_matrix"]->GetArray();
+        Vector4 v21 = JSON2Vec4(matrix2[0].GetObject());
+        Vector4 v22 = JSON2Vec4(matrix2[1].GetObject());
+        Vector4 v23 = JSON2Vec4(matrix2[2].GetObject());
+        Vector4 v24 = JSON2Vec4(matrix2[3].GetObject());
+
+        Matrix4 vmat(v21.x_,v21.y_,v21.z_,v21.w_,
+                    v22.x_,v22.y_,v22.z_,v22.w_,
+                    v23.x_,v23.y_,v23.z_,v23.w_,
+                    v24.x_,v24.y_,v24.z_,v24.w_);
+
+    /*    Matrix4 mat(v1.x_,v1.z_,v1.y_,v1.w_,
+                    v3.x_,v3.z_,v3.y_,v3.w_,
+                    v2.x_,v2.z_,v2.y_,v2.w_,
+                    v4.x_,v4.z_,v4.y_,v4.w_);*/
+
+
+        Renderer* renderer = GetSubsystem<Renderer>();
+        Viewport* viewport = renderer->GetViewport(0);
+        Camera* c = viewport->GetCamera();
+        auto t = vmat.Translation();
+
+        auto r = vmat.Rotation().EulerAngles();
+        auto s = vmat.Scale();
+
+        auto inv = vmat.Inverse();
+        auto proj = pmat * inv;
+       // c->SetProjection(proj);
+        cameraNode_->SetPosition(Vector3(t.x_,t.z_,t.y_));
+//        cameraNode_->SetRotation(Quaternion(-r.x_,-r.z_,-r.y_,r.w_));
+
+        CreateScreenshot();
+        cameraNode_->SetRotation(Quaternion(r.x_-90,r.z_,r.y_));
+  //      cameraNode_->SetPosition(t);
+//        cameraNode_->SetRotation(r);
+    }
 }
 
 void SceneLoader::InitEditor()

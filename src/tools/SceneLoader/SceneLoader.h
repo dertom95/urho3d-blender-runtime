@@ -81,10 +81,14 @@ private:
     void UpdateCameras();
 
     void InitEditor();
+    void CreateScreenshot();
+
+    void HandleRequestFromBlender(const JSONObject& json);
 
     String sceneName;
     Vector<String> runtimeFlags;
     String exportPath;
+    String additionalResourcePath;
     String customUI;
 
     int currentCamId;
@@ -97,4 +101,7 @@ private:
     bool editorVisible_;
     /// Script file.
     SharedPtr<ScriptFile> scriptFile_;
+    float screenshotTimer;
+    float screenshotInterval;
+    bool automaticIntervallScreenshots;
 };
