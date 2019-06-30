@@ -57,6 +57,8 @@ private:
     void CreateUI();
     /// Set up a viewport for displaying the scene.
     void SetupViewport();
+
+    void InitRenderTarget();
     /// Subscribe to application-wide logic update event.
     void SubscribeToEvents();
     /// Reads input and moves the camera.
@@ -77,13 +79,14 @@ private:
     void HandleScriptReloadFinished(StringHash eventType, VariantMap& eventData);
     /// Handle reload failure of the script file.
     void HandleScriptReloadFailed(StringHash eventType, VariantMap& eventData);
-
+    void HandleAfterRender(StringHash eventType, VariantMap& eventData);
     void UpdateCameras();
 
     void InitEditor();
     void CreateScreenshot();
 
     void HandleRequestFromBlender(const JSONObject& json);
+    void HandleRequestFromEngineToBlender();
 
     String sceneName;
     Vector<String> runtimeFlags;
@@ -95,8 +98,8 @@ private:
     bool updatedCamera;
     PODVector<Camera*> cameras;
 
-
-
+    Camera* blenderViewportCamera;
+    Node* blenderViewportCameraNode;
 
     bool editorVisible_;
     /// Script file.
@@ -104,4 +107,8 @@ private:
     float screenshotTimer;
     float screenshotInterval;
     bool automaticIntervallScreenshots;
+
+    bool rtRenderRequested;
+    RenderSurface* surface;
+    SharedPtr<Texture2D> rtTexture;
 };

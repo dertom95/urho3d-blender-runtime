@@ -57,6 +57,8 @@ SceneLoader::SceneLoader(Context* context) :
     ,screenshotInterval(2.0f)
     ,screenshotTimer(0.0f)
     ,automaticIntervallScreenshots(false)
+    ,rtRenderRequested(false)
+    ,surface(0)
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -124,6 +126,8 @@ void SceneLoader::Start()
 
     // Setup the viewport for displaying the scene
     SetupViewport();
+
+    InitRenderTarget();
 
     // Subscribe to global events for camera movement
     SubscribeToEvents();
@@ -305,6 +309,7 @@ void SceneLoader::SetupViewport()
     // Set up a viewport to the Renderer subsystem so that the 3D scene can be seen
     SharedPtr<Viewport> viewport(new Viewport(context_, scene_, cameraNode_->GetComponent<Camera>()));
     renderer->SetViewport(0, viewport);
+
 }
 
 void SceneLoader::SubscribeToEvents()
@@ -313,6 +318,8 @@ void SceneLoader::SubscribeToEvents()
     SubscribeToEvent(E_UPDATE, URHO3D_HANDLER(SceneLoader, HandleUpdate));
     using namespace FileChanged;
     SubscribeToEvent(E_FILECHANGED, URHO3D_HANDLER(SceneLoader, HandleFileChanged));
+    SubscribeToEvent(E_ENDALLVIEWSRENDER, URHO3D_HANDLER(SceneLoader, HandleAfterRender));
+
 }
 
 void SceneLoader::MoveCamera(float timeStep)
@@ -370,17 +377,6 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
         JSONFile json(context_);
         if (json.LoadFile(filename)){
             HandleRequestFromBlender(json.GetRoot().GetObject());
-
-            FileSystem* f = GetSubsystem<FileSystem>();
-            f->Delete(filename);
-
-            if (additionalResourcePath!=""){
-                JSONFile* file = new JSONFile(context_);
-                JSONObject responseToBlender;
-                responseToBlender["action"]="reload_screenshot";
-                file->GetRoot()=responseToBlender;
-                file->SaveFile(additionalResourcePath+"/runtime2blender.json");
-            }
         }
     }
 
@@ -427,14 +423,11 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
         updatedCamera = false;
     }
 
-    if (automaticIntervallScreenshots){
-        screenshotTimer-=timeStep;
-        if (screenshotTimer<=0){
-            CreateScreenshot();
-            screenshotTimer = screenshotInterval;
+    if (rtRenderRequested){
+        if (screenshotTimer > 0){
+            screenshotTimer-=timeStep;
         }
     }
-
 }
 
 void SceneLoader::CreateScreenshot()
@@ -461,8 +454,24 @@ Vector3 JSON2Vec3(const JSONObject& v){
 
 void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
 {
+
+
     if (json.Contains("view_matrix")){
-        JSONArray matrix = json["matrix"]->GetArray();
+
+        int width = json["view_width"]->GetInt();
+        int height = json["view_height"]->GetInt();
+
+        if (width!=rtTexture->GetWidth() || height!=rtTexture->GetHeight()){
+            rtTexture->SetSize(width, height, Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
+            surface = rtTexture->GetRenderSurface();
+            SharedPtr<Viewport> rttViewport(new Viewport(context_, scene_, blenderViewportCamera));
+            surface->SetViewport(0, rttViewport);
+            surface->SetUpdateMode(SURFACE_MANUALUPDATE);
+        }
+
+
+
+        JSONArray matrix = json["perspective_matrix"]->GetArray();
         Vector4 v1 = JSON2Vec4(matrix[0].GetObject());
         Vector4 v2 = JSON2Vec4(matrix[1].GetObject());
         Vector4 v3 = JSON2Vec4(matrix[2].GetObject());
@@ -486,8 +495,6 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
                     v23.x_,v23.y_,v23.z_,v23.w_,
                     v24.x_,v24.y_,v24.z_,v24.w_);
 
-        auto vPos = JSON2Vec3(json["viewPos"]->GetObject());
-        auto vRot = JSON2Vec3(json["viewRot"]->GetObject());
     /*    Matrix4 vmat(v1.x_,v1.z_,v1.y_,v1.w_,
                     v3.x_,v3.z_,v3.y_,v3.w_,
                     v2.x_,v2.z_,v2.y_,v2.w_,
@@ -504,20 +511,48 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         URHO3D_LOGINFOF("ROT:%s",r.ToString().CString());
         auto s = vmat.Scale();
 
-        cameraNode_->SetPosition(Vector3(0,0,0));
-        cameraNode_->SetRotation(Quaternion(r.x_+90,r.z_-90,0));
-        cameraNode_->Translate(Vector3(-t.x_,-t.y_,t.z_));
+        blenderViewportCameraNode->SetPosition(Vector3(0,0,0));
+        blenderViewportCameraNode->SetRotation(Quaternion(r.x_+90,r.z_-90,0));
+        blenderViewportCameraNode->Translate(Vector3(-t.x_,-t.y_,t.z_));
 
-
-
-
-
-//        cameraNode_->Translate(Vector3(t.x_,-t.z_,t.y_));
-        CreateScreenshot();
-
-  //      cameraNode_->SetPosition(t);
-//        cameraNode_->SetRotation(r);
+        rtRenderRequested = true;
+        surface->QueueUpdate();
     }
+}
+
+void SceneLoader::HandleRequestFromEngineToBlender()
+{
+    FileSystem* f = GetSubsystem<FileSystem>();
+    f->Delete(additionalResourcePath+"/req2engine.json");
+
+    if (additionalResourcePath!=""){
+        JSONFile* file = new JSONFile(context_);
+        JSONObject responseToBlender;
+        responseToBlender["action"]="reload_screenshot";
+        file->GetRoot()=responseToBlender;
+        file->SaveFile(additionalResourcePath+"/runtime2blender.json");
+    }
+}
+
+void SceneLoader::InitRenderTarget()
+{
+    blenderViewportCameraNode=scene_->CreateChild("blenderCamera");
+    blenderViewportCamera = blenderViewportCameraNode->CreateComponent<Camera>();
+
+
+    // Create a renderable texture (1024x768, RGB format), enable bilinear filtering on it
+    rtTexture = new Texture2D(context_);
+    rtTexture->SetSize(1024, 768, Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
+    rtTexture->SetFilterMode(FILTER_BILINEAR);
+
+    // Get the texture's RenderSurface object (exists when the texture has been created in rendertarget mode)
+    // and define the viewport for rendering the second scene, similarly as how backbuffer viewports are defined
+    // to the Renderer subsystem. By default the texture viewport will be updated when the texture is visible
+    // in the main view
+    surface = rtTexture->GetRenderSurface();
+    SharedPtr<Viewport> rttViewport(new Viewport(context_, scene_, blenderViewportCamera));
+    surface->SetViewport(0, rttViewport);
+    surface->SetUpdateMode(SURFACE_MANUALUPDATE);
 }
 
 void SceneLoader::InitEditor()
@@ -572,6 +607,26 @@ void SceneLoader::HandleScriptReloadFailed(StringHash eventType, VariantMap& eve
 #endif
 }
 
+void SceneLoader::HandleAfterRender(StringHash eventType, VariantMap& eventData)
+{
+    if (rtRenderRequested && screenshotTimer <= 0 ){
+        screenshotTimer = screenshotInterval;
+        rtRenderRequested=false;
 
+        URHO3D_LOGINFO("AFTER RENDER");
+        Image* _pImage = new Image(context_);
+        _pImage->SetSize(rtTexture->GetWidth(), rtTexture->GetHeight(), 4);
 
+        unsigned char* _ImageData = new unsigned char[rtTexture->GetDataSize(rtTexture->GetWidth(), rtTexture->GetHeight())];
+        rtTexture->GetData(0, _ImageData);
 
+        _pImage->SetData(_ImageData);
+
+        _pImage->SavePNG(additionalResourcePath+"/Screenshot.png");
+
+        delete[] _ImageData;
+
+        HandleRequestFromEngineToBlender();
+    }
+
+}
