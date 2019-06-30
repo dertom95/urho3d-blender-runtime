@@ -42,6 +42,7 @@
 #include "SampleComponents/PlayAnimation.h"
 #include "game/gameComponents/GameComponents.h"
 #include <Globals.h>
+#include <Urho3D/Urho3DAll.h>
 
 URHO3D_DEFINE_APPLICATION_MAIN(SceneLoader)
 
@@ -51,6 +52,8 @@ SceneLoader::SceneLoader(Context* context) :
     ,exportPath("./urho3d_components.json")
     ,currentCamId(0)
     ,updatedCamera(false)
+    ,editorVisible_(false)
+
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -58,6 +61,8 @@ SceneLoader::SceneLoader(Context* context) :
     // register group instance component
     CommonComponents::RegisterComponents(context);
     GameComponents::RegisterComponents(context);
+
+    engineParameters_[EP_WINDOW_RESIZABLE]=true;
 }
 
 
@@ -123,6 +128,8 @@ void SceneLoader::Start()
     Sample::InitMouseMode(MM_FREE);
 
     ExportComponents(exportPath);
+
+
 }
 
 void SceneLoader::ExportComponents(const String& outputPath)
@@ -280,9 +287,8 @@ void SceneLoader::CreateUI()
     cursor->SetStyleAuto();
     ui->SetCursor(cursor);
     // Set starting position of the cursor at the rendering window center
-    auto* graphics = GetSubsystem<Graphics>();
+    Graphics* graphics = GetSubsystem<Graphics>();
     cursor->SetPosition(graphics->GetWidth() / 2, graphics->GetHeight() / 2);
-
     // Load UI content prepared in the editor and add to the UI hierarchy
 }
 
@@ -386,12 +392,73 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
         Viewport* viewport = renderer->GetViewport(0);
         viewport->SetCamera(cameras[currentCamId]);
     }
+    else if (input->GetKeyPress(KEY_F12)){
+        if (!editorVisible_){
+            InitEditor();
+            editorVisible_=true;
+        }
+    }
 
     if (!updatedCamera){
         UpdateCameras();
         updatedCamera = false;
     }
 
+
 }
+
+void SceneLoader::InitEditor()
+{
+    if (!context_->GetSubsystem<Script>()){
+        // Instantiate and register the AngelScript subsystem
+        context_->RegisterSubsystem(new Script(context_));
+        context_->RegisterSubsystem(new LuaScript(context_));
+
+        // Hold a shared pointer to the script file to make sure it is not unloaded during runtime
+        scriptFile_ = GetSubsystem<ResourceCache>()->GetResource<ScriptFile>("Scripts/Editor.as");
+    }
+
+    /// \hack If we are running the editor, also instantiate Lua subsystem to enable editing Lua ScriptInstances
+    // If script loading is successful, proceed to main loop
+    if (scriptFile_ && scriptFile_->Execute("void Start()"))
+    {
+        // Subscribe to script's reload event to allow live-reload of the application
+        SubscribeToEvent(scriptFile_, E_RELOADSTARTED, URHO3D_HANDLER(SceneLoader, HandleScriptReloadStarted));
+        SubscribeToEvent(scriptFile_, E_RELOADFINISHED, URHO3D_HANDLER(SceneLoader, HandleScriptReloadFinished));
+        SubscribeToEvent(scriptFile_, E_RELOADFAILED, URHO3D_HANDLER(SceneLoader, HandleScriptReloadFailed));
+        return;
+    }
+}
+
+
+void SceneLoader::HandleScriptReloadStarted(StringHash eventType, VariantMap& eventData)
+{
+#ifdef URHO3D_ANGELSCRIPT
+    if (scriptFile_->GetFunction("void Stop()"))
+        scriptFile_->Execute("void Stop()");
+#endif
+}
+
+void SceneLoader::HandleScriptReloadFinished(StringHash eventType, VariantMap& eventData)
+{
+#ifdef URHO3D_ANGELSCRIPT
+    // Restart the script application after reload
+    if (!scriptFile_->Execute("void Start()"))
+    {
+        scriptFile_.Reset();
+        ErrorExit();
+    }
+#endif
+}
+
+void SceneLoader::HandleScriptReloadFailed(StringHash eventType, VariantMap& eventData)
+{
+#ifdef URHO3D_ANGELSCRIPT
+    scriptFile_.Reset();
+    ErrorExit();
+#endif
+}
+
+
 
 

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <Sample.h>
+#include<Urho3D/AngelScript/Script.h>
 
 namespace Urho3D
 {
@@ -70,8 +71,16 @@ private:
     void HandleUpdate(StringHash eventType, VariantMap& eventData);
 
     void HandleFileChanged(StringHash eventType, VariantMap& eventData);
+    /// Handle reload start of the script file.
+    void HandleScriptReloadStarted(StringHash eventType, VariantMap& eventData);
+    /// Handle reload success of the script file.
+    void HandleScriptReloadFinished(StringHash eventType, VariantMap& eventData);
+    /// Handle reload failure of the script file.
+    void HandleScriptReloadFailed(StringHash eventType, VariantMap& eventData);
 
     void UpdateCameras();
+
+    void InitEditor();
 
     String sceneName;
     Vector<String> runtimeFlags;
@@ -81,4 +90,11 @@ private:
     int currentCamId;
     bool updatedCamera;
     PODVector<Camera*> cameras;
+
+
+
+
+    bool editorVisible_;
+    /// Script file.
+    SharedPtr<ScriptFile> scriptFile_;
 };
