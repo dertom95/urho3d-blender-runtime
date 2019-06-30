@@ -376,7 +376,8 @@ void Sample::HandleSceneUpdate(StringHash /*eventType*/, VariantMap& eventData)
                     pitch_ += TOUCH_SENSITIVITY * camera->GetFov() / graphics->GetHeight() * state->delta_.y_;
 
                     // Construct new orientation for the camera scene node from yaw and pitch; roll is fixed to zero
-                    cameraNode_->SetRotation(Quaternion(pitch_, yaw_, 0.0f));
+                    //cameraNode_->SetRotation(Quaternion(pit0ch_, yaw_, 0.0f));
+                    URHO3D_LOGINFOF("cameraRot:%s",cameraNode_->GetRotation().EulerAngles());
                 }
                 else
                 {

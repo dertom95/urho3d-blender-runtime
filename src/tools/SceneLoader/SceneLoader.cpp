@@ -260,6 +260,7 @@ void SceneLoader::ReloadScene()
         light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
         light->SetSpecularIntensity(0.5f);
      //   light->SetColor(Color::RED);
+        light->SetBrightness(2.5f);
     }
 
     UpdateCameras();
@@ -383,7 +384,7 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
         }
     }
 
-    URHO3D_LOGINFOF("File Changed: fn:%s resname:%s",filename.CString(),resName.CString());
+    //URHO3D_LOGINFOF("File Changed: fn:%s resname:%s",filename.CString(),resName.CString());
 }
 
 void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
@@ -448,11 +449,14 @@ void SceneLoader::CreateScreenshot()
 //        Time::GetTimeStamp().Replaced(':', '_').Replaced('.', '_').Replaced(' ', '_') + ".png");
     String screenshotPath = additionalResourcePath+"/Screenshot.png";
     screenshot.SavePNG(screenshotPath);
-    URHO3D_LOGINFOF("Save screenshot to %s",screenshotPath.CString());
+   // URHO3D_LOGINFOF("Save screenshot to %s",screenshotPath.CString());
 }
 
 Vector4 JSON2Vec4(const JSONObject& v){
     return Vector4(v["x"]->GetFloat(),v["y"]->GetFloat(),v["z"]->GetFloat(),v["w"]->GetFloat());
+}
+Vector3 JSON2Vec3(const JSONObject& v){
+    return Vector3(v["x"]->GetFloat(),v["y"]->GetFloat(),v["z"]->GetFloat());
 }
 
 void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
@@ -482,7 +486,9 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
                     v23.x_,v23.y_,v23.z_,v23.w_,
                     v24.x_,v24.y_,v24.z_,v24.w_);
 
-    /*    Matrix4 mat(v1.x_,v1.z_,v1.y_,v1.w_,
+        auto vPos = JSON2Vec3(json["viewPos"]->GetObject());
+        auto vRot = JSON2Vec3(json["viewRot"]->GetObject());
+    /*    Matrix4 vmat(v1.x_,v1.z_,v1.y_,v1.w_,
                     v3.x_,v3.z_,v3.y_,v3.w_,
                     v2.x_,v2.z_,v2.y_,v2.w_,
                     v4.x_,v4.z_,v4.y_,v4.w_);*/
@@ -491,19 +497,24 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         Renderer* renderer = GetSubsystem<Renderer>();
         Viewport* viewport = renderer->GetViewport(0);
         Camera* c = viewport->GetCamera();
+        c->SetFarClip(1000.0f);
         auto t = vmat.Translation();
 
         auto r = vmat.Rotation().EulerAngles();
+        URHO3D_LOGINFOF("ROT:%s",r.ToString().CString());
         auto s = vmat.Scale();
 
-        auto inv = vmat.Inverse();
-        auto proj = pmat * inv;
-       // c->SetProjection(proj);
-        cameraNode_->SetPosition(Vector3(t.x_,t.z_,t.y_));
-//        cameraNode_->SetRotation(Quaternion(-r.x_,-r.z_,-r.y_,r.w_));
+        cameraNode_->SetPosition(Vector3(0,0,0));
+        cameraNode_->SetRotation(Quaternion(r.x_+90,r.z_-90,0));
+        cameraNode_->Translate(Vector3(-t.x_,-t.y_,t.z_));
 
+
+
+
+
+//        cameraNode_->Translate(Vector3(t.x_,-t.z_,t.y_));
         CreateScreenshot();
-        cameraNode_->SetRotation(Quaternion(r.x_-90,r.z_,r.y_));
+
   //      cameraNode_->SetPosition(t);
 //        cameraNode_->SetRotation(r);
     }
