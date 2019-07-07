@@ -261,8 +261,8 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeSetData(customParameterNode,treeID+"__standardParams","StandardParams","Material");
         NodeAddInputSocket(customParameterNode,"Material",SOCK_BOOL);
         NodeAddProp(customParameterNode,"MatDiffColor",NT_COLOR,"(1,1,1,1)");
-        NodeAddProp(customParameterNode,"MatSpecColor",NT_COLOR,"(0.1,0.1,0.1,1)");
-        NodeAddProp(customParameterNode,"MatEmissiveColor",NT_COLOR,"(0,0,0,1)");
+        NodeAddProp(customParameterNode,"MatSpecColor",NT_COLOR,"(0.0,0.0,0.0,1)");
+        NodeAddProp(customParameterNode,"MatEmissiveColor",NT_COLOR,"(0,0,0,0)");
         NodeAddProp(customParameterNode,"UOffset",NT_FLOAT,"1",ST_FACTOR);
         NodeAddProp(customParameterNode,"VOffset",NT_FLOAT,"1",ST_FACTOR);
 
@@ -278,18 +278,30 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeSetData(customParameterNode,treeID+"__pbsParams","PBSParams","Material");
         NodeAddInputSocket(customParameterNode,"Material",SOCK_BOOL);
         NodeAddProp(customParameterNode,"MatDiffColor",NT_COLOR,"(1,1,1,1)");
-        NodeAddProp(customParameterNode,"MatSpecColor",NT_COLOR,"(0.1,0.1,0.1,1)");
-        NodeAddProp(customParameterNode,"MatEmissiveColor",NT_COLOR,"(0,0,0,1)");
+        NodeAddProp(customParameterNode,"MatSpecColor",NT_COLOR,"(0.0,0.0,0.0,1)");
+        NodeAddProp(customParameterNode,"MatEmissiveColor",NT_COLOR,"(0,0,0,0)");
         NodeAddProp(customParameterNode,"MatEnvMapColor",NT_COLOR,"(1,1,1,1)");
-        NodeAddProp(customParameterNode,"Roughness",NT_FLOAT,"0",ST_FACTOR);
+        NodeAddProp(customParameterNode,"Roughness",NT_FLOAT,"0.5",ST_FACTOR);
         NodeAddProp(customParameterNode,"Metallic",NT_FLOAT,"0",ST_FACTOR);
-        NodeAddProp(customParameterNode,"UOffset",NT_FLOAT,"0",ST_FACTOR);
-        NodeAddProp(customParameterNode,"VOffset",NT_FLOAT,"0",ST_FACTOR);
+        NodeAddProp(customParameterNode,"UOffset",NT_FLOAT,"1",ST_FACTOR);
+        NodeAddProp(customParameterNode,"VOffset",NT_FLOAT,"1",ST_FACTOR);
 
         nodes.Push(customParameterNode);
     }
 
+    {
+        JSONObject advancedMaterialNode;
+        NodeSetData(advancedMaterialNode, treeID+"__advancedMaterial","MaterialAdvanced","Material" );
+        NodeAddInputSocket(advancedMaterialNode,"Material",SOCK_BOOL);
+        NodeAddProp(advancedMaterialNode,"vsdefines",NT_STRING,"");
+        NodeAddProp(advancedMaterialNode,"psdefines",NT_STRING,"");
+        NodeAddProp(advancedMaterialNode,"renderOrder",NT_INT,"128");
+        NodeAddProp(advancedMaterialNode,"occlusion",NT_BOOL,"true");
+        NodeAddProp(advancedMaterialNode,"alphaToCoverage",NT_BOOL,"false");
+        NodeAddProp(advancedMaterialNode,"lineAntialias",NT_BOOL,"false");
 
+        nodes.Push(advancedMaterialNode);
+    }
 
     {
         // --------------------------------
