@@ -84,16 +84,6 @@ void Urho3DNodeTreeExporter::ProcessFileSystem()
             }
         }
 
-        // grab models from the specified model folder. all files with .mdl extension are considered a mesh
-        for (String path : m_modelFolders){
-            String dir = resDir+path;
-            fs->ScanDir(dirFiles,dir,"*.mdl",SCAN_FILES,true);
-            for (String foundModel : dirFiles){
-                auto modelResourceName = path+"/"+foundModel;
-                modelFiles.Push(modelResourceName);
-            }
-        }
-
         for (String path : m_animationFolders){
             String dir = resDir+path;
             fs->ScanDir(dirFiles,dir,"*.ani",SCAN_FILES,true);
