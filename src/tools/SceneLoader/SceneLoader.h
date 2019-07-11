@@ -49,6 +49,7 @@ public:
 
     /// Setup after engine initialization and before running the main loop.
     void Start() override;
+    void Stop() override;
 
 private:
     /// Construct the scene content.
@@ -80,13 +81,18 @@ private:
     /// Handle reload failure of the script file.
     void HandleScriptReloadFailed(StringHash eventType, VariantMap& eventData);
     void HandleAfterRender(StringHash eventType, VariantMap& eventData);
+
+    void HandleBlenderMSG(StringHash eventType, VariantMap& eventData);
+
+
+    void HandleRequestFromBlender(const JSONObject &json);
     void UpdateCameras();
 
     void InitEditor();
-    void CreateScreenshot();
+  //  void CreateScreenshot();
 
-    void HandleRequestFromBlender(const JSONObject& json);
-    void HandleRequestFromEngineToBlender();
+  //  void HandleRequestFromBlender(const JSONObject& json);
+//    void HandleRequestFromEngineToBlender();
 
     String sceneName;
     Vector<String> runtimeFlags;

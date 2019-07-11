@@ -25,6 +25,15 @@ include (UrhoCommon)
 # Define target name
 
 
+subdirs(src/3rd/libzmq)
+subdirs(src/3rd/cppzmq)
+
+LINK_LIBRARIES(zmq)
+INCLUDE_DIRECTORIES(
+    src/3rd/libzmq/include
+    src/3rd/cppzmq
+)
+
 set (GAME_ONLY_SRC
     src/game/Main.cpp src/game/Main.h
 )
@@ -62,6 +71,9 @@ set (SCENE_LOADER_SRC
     src/Sample.h src/Sample.inl
     src/tools/SceneLoader/SceneLoader.h
     src/tools/SceneLoader/SceneLoader.cpp
+    src/tools/SceneLoader/BlenderNetwork.h
+    src/tools/SceneLoader/BlenderNetwork.cpp
+    src/tools/SceneLoader/CustomEvents.h
 )
 
 set (COMMON_SOURCE_FILES
@@ -80,6 +92,8 @@ set (SOURCE_FILES
     ${COMMON_SOURCE_FILES}
     ${SCENE_LOADER_SRC}
 )
+
+
 
 # Setup target with resource copying
 # compile sceneloader
