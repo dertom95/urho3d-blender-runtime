@@ -130,8 +130,6 @@ void SceneLoader::Start()
     // Setup the viewport for displaying the scene
     SetupViewport();
 
-    InitRenderTarget();
-
     // Subscribe to global events for camera movement
     SubscribeToEvents();
 
@@ -381,9 +379,20 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
     using namespace FileChanged;
     String filename = eventData[P_FILENAME].GetString();
     String resName = eventData[P_RESOURCENAME].GetString();
-
-    if (resName=="Scenes/Scene.xml"){
+    auto cache = GetSubsystem<ResourceCache>();
+    if (resName.StartsWith("Scenes")){
         ReloadScene();
+        if (scenes_.Contains(resName)){
+            SharedPtr<File> file = cache->GetFile(resName);
+            Scene* scene =scenes_[resName];
+            scene->LoadXML(*file);
+
+            for (ViewRenderer* view : viewRenderers.Values()){
+                if (view->GetScene() == scene){
+                    updatedRenderers.Insert(view);
+                }
+            }
+        }
     }
 //    else if (resName=="req2engine.json"){
 //        JSONFile json(context_);
@@ -400,7 +409,9 @@ void SceneLoader::HandleBlenderMSG(StringHash eventType, VariantMap &eventData)
 {
     using namespace BlenderConnect;
     auto topic = eventData[P_TOPIC].GetString();
-    JSONObject data  = *static_cast<JSONObject*>(eventData[P_DATA].GetVoidPtr());
+    auto d = eventData[P_DATA];
+    JSONObject data  =  d.GetCustom<JSONObject>();
+    //*static_cast<JSONObject*>(eventData[P_DATA].GetVoidPtr());
     HandleRequestFromBlender(data);
     int a=0;
 }
@@ -560,26 +571,6 @@ Vector3 JSON2Vec3(const JSONObject& v){
 //    }
 //}
 
-void SceneLoader::InitRenderTarget()
-{
-    blenderViewportCameraNode=scene_->CreateChild("blenderCamera");
-    blenderViewportCamera = blenderViewportCameraNode->CreateComponent<Camera>();
-
-
-    // Create a renderable texture (1024x768, RGB format), enable bilinear filtering on it
-    rtTexture = new Texture2D(context_);
-    rtTexture->SetSize(1024, 768, Graphics::GetRGBFormat(), TEXTURE_RENDERTARGET);
-    rtTexture->SetFilterMode(FILTER_BILINEAR);
-
-    // Get the texture's RenderSurface object (exists when the texture has been created in rendertarget mode)
-    // and define the viewport for rendering the second scene, similarly as how backbuffer viewports are defined
-    // to the Renderer subsystem. By default the texture viewport will be updated when the texture is visible
-    // in the main view
-    surface = rtTexture->GetRenderSurface();
-    SharedPtr<Viewport> rttViewport(new Viewport(context_, scene_, blenderViewportCamera));
-    surface->SetViewport(0, rttViewport);
-    surface->SetUpdateMode(SURFACE_MANUALUPDATE);
-}
 
 void SceneLoader::InitEditor()
 {
@@ -642,26 +633,92 @@ Vector3 JSON2Vec3(const JSONObject& v){
 }
 
 
+ViewRenderer* SceneLoader::GetViewRenderer(int viewId)
+{
+    if (viewRenderers.Contains(viewId)){
+        ViewRenderer* result = viewRenderers[viewId];
+        return result;
+    } else {
+        return nullptr;
+    }
+}
+
+Scene* SceneLoader::GetScene(const String &sceneName)
+{
+    auto sceneResourceName = "Scenes/"+sceneName+".xml";
+
+    if (scenes_.Contains(sceneResourceName)){
+        return scenes_[sceneResourceName];
+    }
+
+    auto cache = GetSubsystem<ResourceCache>();
+    SharedPtr<File> file = cache->GetFile(sceneResourceName);
+    if (file.Null()){
+        URHO3D_LOGERRORF("Could not load scene:%s",sceneName.CString());
+        return nullptr;
+    }
+    Scene* newScene = new Scene(context_);
+    newScene->LoadXML(*file);
+    scenes_[sceneResourceName]=newScene;
+    return newScene;
+}
+
+Matrix4 JSON2Matrix(const JSONArray& mat4Vecs)
+{
+    Vector4 v21 = JSON2Vec4(mat4Vecs[0].GetObject());
+    Vector4 v22 = JSON2Vec4(mat4Vecs[1].GetObject());
+    Vector4 v23 = JSON2Vec4(mat4Vecs[2].GetObject());
+    Vector4 v24 = JSON2Vec4(mat4Vecs[3].GetObject());
+
+    Matrix4 vmat(v21.x_,v21.y_,v21.z_,v21.w_,
+                v22.x_,v22.y_,v22.z_,v22.w_,
+                v23.x_,v23.y_,v23.z_,v23.w_,
+                v24.x_,v24.y_,v24.z_,v24.w_);
+    return vmat;
+}
+
+
+
 void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
 {
+    int viewId = json["view_id"]->GetInt();
 
+    ViewRenderer* viewRenderer = GetViewRenderer(viewId);
+
+    int width = 100;
+    int height = 100;
+
+
+
+    bool newRenderer = false;
+    if (!viewRenderer){
+        auto resolution = json["resolution"]->GetObject();
+        width = resolution["width"].GetInt();
+        height = resolution["height"].GetInt();
+
+        newRenderer = true;
+        String sceneName = json["scene_name"]->GetString();
+        Scene* scene = GetScene(sceneName);
+        viewRenderer = new ViewRenderer(context_,viewId,scene,width,height);
+        viewRenderers[viewId] = viewRenderer;
+        updatedRenderers.Insert(viewRenderer);
+    }
+
+    if (!viewRenderer) return;
+
+    if (!newRenderer && json.Contains("resolution")){
+        auto resolution = json["resolution"]->GetObject();
+        width = resolution["width"].GetInt();
+        height = resolution["height"].GetInt();
+        viewRenderer->SetSize(width,height);
+        updatedRenderers.Insert(viewRenderer);
+    }
 
     if (json.Contains("view_matrix")){
-
-        int width = json["view_width"]->GetInt();
-        int height = json["view_height"]->GetInt();
-
-      /*  if (width!=rtTexture->GetWidth() || height!=rtTexture->GetHeight()){
-            rtTexture->SetSize(width, height, Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
-            surface = rtTexture->GetRenderSurface();
-            SharedPtr<Viewport> rttViewport(new Viewport(context_, scene_, blenderViewportCamera));
-            surface->SetViewport(0, rttViewport);
-            surface->SetUpdateMode(SURFACE_MANUALUPDATE);
-        }
-*/
-
-
-        JSONArray matrix = json["perspective_matrix"]->GetArray();
+        Matrix4 vmat(JSON2Matrix(json["view_matrix"]->GetArray()));
+        viewRenderer->SetViewMatrix(vmat);
+        updatedRenderers.Insert(viewRenderer);
+        /*JSONArray matrix = json["perspective_matrix"]->GetArray();
         Vector4 v1 = JSON2Vec4(matrix[0].GetObject());
         Vector4 v2 = JSON2Vec4(matrix[1].GetObject());
         Vector4 v3 = JSON2Vec4(matrix[2].GetObject());
@@ -672,9 +729,9 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
                     v2.x_,v2.y_,v2.z_,v2.w_,
                     v3.x_,v3.y_,v3.z_,v3.w_,
                     v4.x_,v4.y_,v4.z_,v4.w_);
+*/
 
-
-        JSONArray matrix2 = json["view_matrix"]->GetArray();
+/*        JSONArray matrix2 = json["view_matrix"]->GetArray();
         Vector4 v21 = JSON2Vec4(matrix2[0].GetObject());
         Vector4 v22 = JSON2Vec4(matrix2[1].GetObject());
         Vector4 v23 = JSON2Vec4(matrix2[2].GetObject());
@@ -684,56 +741,124 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
                     v22.x_,v22.y_,v22.z_,v22.w_,
                     v23.x_,v23.y_,v23.z_,v23.w_,
                     v24.x_,v24.y_,v24.z_,v24.w_);
-
+*/
     /*    Matrix4 vmat(v1.x_,v1.z_,v1.y_,v1.w_,
                     v3.x_,v3.z_,v3.y_,v3.w_,
                     v2.x_,v2.z_,v2.y_,v2.w_,
                     v4.x_,v4.z_,v4.y_,v4.w_);*/
 
+//        Renderer* renderer = GetSubsystem<Renderer>();
+//        Viewport* viewport = renderer->GetViewport(0);
+//        Camera* c = viewport->GetCamera();
+//        c->SetFarClip(1000.0f);
+//        auto t = vmat.Translation();
 
-        Renderer* renderer = GetSubsystem<Renderer>();
-        Viewport* viewport = renderer->GetViewport(0);
-        Camera* c = viewport->GetCamera();
-        c->SetFarClip(1000.0f);
-        auto t = vmat.Translation();
+//        auto r = vmat.Rotation().EulerAngles();
+//        URHO3D_LOGINFOF("ROT:%s",r.ToString().CString());
+//        auto s = vmat.Scale();
 
-        auto r = vmat.Rotation().EulerAngles();
-        URHO3D_LOGINFOF("ROT:%s",r.ToString().CString());
-        auto s = vmat.Scale();
+//        blenderViewportCameraNode->SetPosition(Vector3(0,0,0));
+//        blenderViewportCameraNode->SetRotation(Quaternion(r.x_+90,r.z_-90,0));
+//        blenderViewportCameraNode->Translate(Vector3(-t.x_,-t.y_,t.z_));
 
-        blenderViewportCameraNode->SetPosition(Vector3(0,0,0));
-        blenderViewportCameraNode->SetRotation(Quaternion(r.x_+90,r.z_-90,0));
-        blenderViewportCameraNode->Translate(Vector3(-t.x_,-t.y_,t.z_));
-
-        rtRenderRequested = true;
-        surface->QueueUpdate();
+//        rtRenderRequested = true;
+//        surface->QueueUpdate();
     }
 }
 
 
 void SceneLoader::HandleAfterRender(StringHash eventType, VariantMap& eventData)
 {
-    if (rtRenderRequested && screenshotTimer <= 0 ){
+    for (ViewRenderer* view : updatedRenderers){
         screenshotTimer = screenshotInterval;
         rtRenderRequested=false;
 
         URHO3D_LOGINFO("AFTER RENDER");
-        Image* _pImage = new Image(context_);
-        _pImage->SetSize(rtTexture->GetWidth(), rtTexture->GetHeight(), 4);
+        auto rtTexture = view->GetRenderTexture();
 
-        unsigned char* _ImageData = new unsigned char[rtTexture->GetDataSize(rtTexture->GetWidth(), rtTexture->GetHeight())];
+        int imageSize = rtTexture->GetDataSize(rtTexture->GetWidth(), rtTexture->GetHeight());
+        unsigned char* _ImageData = new unsigned char[imageSize];
         rtTexture->GetData(0, _ImageData);
 
-        _pImage->SetData(_ImageData);
+        BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
+        bN->Send(view->GetNetId()+" draw bin",_ImageData,imageSize);
 
-        _pImage->SavePNG(additionalResourcePath+"/Screenshot.png");
+        //_pImage->SavePNG(additionalResourcePath+"/Screenshot"+String(view->GetId())+".png");
 
         delete[] _ImageData;
-
-        BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
-        bN->Send("blender","renderready");
-
-        //HandleRequestFromEngineToBlender();
     }
+    updatedRenderers.Clear();
 
+//    if (rtRenderRequested && screenshotTimer <= 0 ){
+
+//        BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
+//        bN->Send("blender","renderready");
+
+//        //HandleRequestFromEngineToBlender();
+//    }
+
+}
+
+
+ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height)
+    : ctx_(ctx),
+      viewId_(id),
+      width_(width),
+      height_(height)
+{
+//    viewportCameraNode_ = new Node(ctx);
+    netId = "runtime-"+String(id);
+    viewportCameraNode_ = initialScene->CreateChild("Camera");
+    viewportCamera_ = viewportCameraNode_->CreateComponent<Camera>();
+    viewportCamera_->SetFarClip(100.0f);
+
+    auto* light = viewportCameraNode_->CreateComponent<Light>();
+    light->SetLightType(LIGHT_POINT);
+    light->SetRange(30.0f);
+
+    currentScene_ = initialScene;
+    // create the rendertexture for this view
+    renderTexture_ = new Texture2D(ctx_);
+    SetSize(width,height);
+}
+
+void ViewRenderer::SetScene(Scene *scene)
+{
+    if (scene == currentScene_){
+        // nothing to do
+        return;
+    }
+    viewport_->SetScene(scene);
+    renderSurface_->QueueUpdate();
+}
+
+void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
+{
+    auto t = vmat.Translation();
+    auto r = vmat.Rotation().EulerAngles();
+    auto s = vmat.Scale();
+/*
+
+    viewportCameraNode_->SetPosition(Vector3(0,0,0));
+    viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_-90,0));
+    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
+
+*/
+    viewportCameraNode_->SetPosition(Vector3(0,0,0));
+    viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,0));
+    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
+
+    renderSurface_->QueueUpdate();
+}
+
+void ViewRenderer::SetSize(int width, int height)
+{
+    renderTexture_->SetSize(width_,height_,Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
+    renderTexture_->SetFilterMode(FILTER_BILINEAR);
+
+    renderSurface_ = renderTexture_->GetRenderSurface();
+    viewport_ = new Viewport(ctx_, currentScene_, viewportCamera_);
+    renderSurface_->SetViewport(0, viewport_);
+    renderSurface_->SetUpdateMode(SURFACE_MANUALUPDATE);
+    renderSurface_->QueueUpdate();
 }

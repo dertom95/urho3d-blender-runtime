@@ -24,6 +24,7 @@
 
 #include <Sample.h>
 #include<Urho3D/AngelScript/Script.h>
+#include<Urho3D/Urho3DAll.h>
 
 namespace Urho3D
 {
@@ -33,6 +34,30 @@ class Node;
 class Scene;
 
 }
+
+class ViewRenderer{
+public:
+    ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height);
+    void SetSize(int width,int height);
+    void SetScene(Scene* scene);
+    void SetViewMatrix(const Matrix4& vmat);
+    inline SharedPtr<Texture2D> GetRenderTexture(){ return renderTexture_;}
+    inline int GetId() { return viewId_;}
+    inline SharedPtr<Scene> GetScene() { return currentScene_; }
+    const String& GetNetId() { return netId; }
+private:
+    String netId;
+    int viewId_;
+    int width_;
+    int height_;
+    Context* ctx_;
+    SharedPtr<Scene> currentScene_;
+    SharedPtr<RenderSurface> renderSurface_;
+    SharedPtr<Texture2D> renderTexture_;
+    SharedPtr<Viewport> viewport_;
+    SharedPtr<Node> viewportCameraNode_;
+    SharedPtr<Camera> viewportCamera_;
+};
 
 /// Scene & UI load example.
 /// This sample demonstrates:
@@ -59,7 +84,6 @@ private:
     /// Set up a viewport for displaying the scene.
     void SetupViewport();
 
-    void InitRenderTarget();
     /// Subscribe to application-wide logic update event.
     void SubscribeToEvents();
     /// Reads input and moves the camera.
@@ -87,6 +111,10 @@ private:
 
     void HandleRequestFromBlender(const JSONObject &json);
     void UpdateCameras();
+
+    Scene* GetScene(const String& sceneName);
+    ViewRenderer* GetViewRenderer(int viewId);
+    ViewRenderer* CreateViewRenderer(Context* ctx, Scene* scene, int width, int height);
 
     void InitEditor();
   //  void CreateScreenshot();
@@ -117,4 +145,8 @@ private:
     bool rtRenderRequested;
     RenderSurface* surface;
     SharedPtr<Texture2D> rtTexture;
+
+    HashMap<StringHash,Scene*> scenes_;
+    HashMap<int,ViewRenderer*> viewRenderers;
+    HashSet<ViewRenderer*> updatedRenderers;
 };

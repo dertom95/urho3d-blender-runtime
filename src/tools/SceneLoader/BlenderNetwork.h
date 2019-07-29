@@ -48,8 +48,8 @@ public:
     void Close();
     /// Handle begin frame event.
     void HandleBeginFrame(StringHash eventType, VariantMap& eventData);
-    void Send(String topic,String txtData);
-    void Send(String topic,int length,void* buffer);
+    void Send(const String& topic,const String& txtData);
+    void Send(const String& topic,void* buffer,int length);
 private:
     bool running_;
     zmq::socket_t  inSocket_;

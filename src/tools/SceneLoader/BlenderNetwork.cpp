@@ -54,7 +54,7 @@ void BlenderNetwork::InitNetwork()
 {
     inSocket_ = zmq::socket_t(ctx, zmq::socket_type::sub);
     inSocket_.connect("tcp://localhost:5560");
-    String topic("runtime");
+    String topic("blender");
     inSocket_.setsockopt(ZMQ_SUBSCRIBE, topic.CString(),topic.Length());
     inSocket_.setsockopt(ZMQ_RCVTIMEO, 100);
 
@@ -72,28 +72,56 @@ void BlenderNetwork::CheckNetwork()
     if (ok){
         int mS = multipart.size();
 
-        auto topic = multipart.popstr();
+        if (mS != 2){
+            URHO3D_LOGERRORF("BlenderNetwork: WRONG AMOUNT OF MULTIPART_MSGs %i",mS);
+            return;
+        }
 
-        zmq_msg = multipart.pop();
-        std::string data(zmq_msg.data<char>(),zmq_msg.size());
+        auto _topic = multipart.popstr();
+        Vector<String> topicSplit = String(_topic.c_str()).Split(' ');
 
-        JSONFile jsonFile(context_);
-        jsonFile.FromString(Urho3D::String(data.c_str()));
-        auto root = jsonFile.GetRoot().GetObject();
+        if (topicSplit.Size() != 3){
+            URHO3D_LOGERRORF("BlenderNetwork: WRONG TOPIC-FORMAT! %s",_topic);
+            return;
+        }
 
-        //HandleRequestFromBlender(root.GetObject());
-
+        auto topic = topicSplit[0];
+        auto subtype = topicSplit[1];
+        auto datatype = topicSplit[2];
 
         using namespace BlenderConnect;
         VariantMap map;
-        map[P_TOPIC]=String(topic.c_str());
-        //map[P_DATA]=String(data.c_str());
-        map[P_DATA]=&root;
+        map[P_TOPIC]=topic;
+        map[P_SUBTYPE]=subtype;
+        map[P_DATATYPE]=datatype;
+
+        zmq_msg = multipart.pop();
+        if (datatype == "text"){
+            std::string data(zmq_msg.data<char>(),zmq_msg.size());
+            map[P_DATA] = String(data.c_str());
+            SendEvent(E_BLENDER_MSG,map);
+        }
+        else if (datatype == "json"){
+            std::string data(zmq_msg.data<char>(),zmq_msg.size());
+
+            JSONFile jsonFile(context_);
+            jsonFile.FromString(Urho3D::String(data.c_str()));
+            auto root = jsonFile.GetRoot().GetObject();
+           // CustomVariantValueImpl<JSONFile> val(jsonFile);
+            if (root.Contains("view_matrix")){
+                auto v = root["view_matrix"];
+                int a=0;
+            }
+            map[P_DATA]=MakeCustomValue(root);
+        } else {
+            URHO3D_LOGERRORF("BlenderNetwork: unsupported datatype:%s",datatype.CString());
+        }
         SendEvent(E_BLENDER_MSG,map);
 
 
+
       //  URHO3D_LOGINFOF("NETWORK:%s\n",recv_msg.c_str());
-        URHO3D_LOGINFO("---NET--");
+        //URHO3D_LOGINFO("---NET--");
     } else {
        //URHO3D_LOGINFO("NETWORK: no result");
     }
@@ -113,18 +141,20 @@ void BlenderNetwork::Close()
     ctx.close();
 }
 
-void BlenderNetwork::Send(String topic, int length, void *buffer)
+void BlenderNetwork::Send(const String& topic, void *buffer,int length)
 {
-
-
+    zmq::multipart_t multipart;
+    multipart.addstr(topic.CString());
+    multipart.add(zmq::message_t(buffer,length));
+    multipart.send(outSocket_);
 }
 
-void BlenderNetwork::Send(String topic, String txtData)
+void BlenderNetwork::Send(const String& topic, const String& txtData)
 {
     zmq::multipart_t multipart;
 //    multipart.push(zmq::message_t(topic.CString(),topic.Length()));
 //    multipart.push(zmq::message_t(txtData.CString(),topic.Length()));
-    multipart.addstr((topic+" info text").CString());
+    multipart.addstr(topic.CString());
     multipart.addstr(txtData.CString());
     multipart.send(outSocket_);
 }
