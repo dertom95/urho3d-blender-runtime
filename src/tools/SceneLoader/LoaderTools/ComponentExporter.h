@@ -58,8 +58,8 @@ public:
 
     void NodeSetData(JSONObject& node,const String& id,const String& name,const String category="misc");
     void NodeAddProp(JSONObject& node, const String& name, NodeType type, const String& defaultValue, NodeSubType subType=ST_NONE, int precission=3, float min=0.0f, float max=0.0f);
-    void NodeAddPropEnum(JSONObject& node,const String& name,JSONArray& elements,const String& defaultValue="0",bool isPreview=false);
-    void NodeAddEnumElement(JSONArray& elementsArray, const String& id,const String& name="",const String& descr="",const String& icon="COLOR",const String& number="0");
+    void NodeAddPropEnum(JSONObject& node,const String& name,JSONArray& elements, bool categorized=false,const String& defaultValue="0",bool isPreview=false);
+    void NodeAddEnumElement(JSONArray& elementsArray, const String& id,const String& name="",const String& descr="",const String& icon="COLOR",const String& number="0",const String& category="");
     void NodeAddInputSocket(JSONObject& node,const String& name, NodeSocketType type);
     void NodeAddOutputSocket(JSONObject& node,const String& name, NodeSocketType type);
 private:

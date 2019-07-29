@@ -84,16 +84,6 @@ void Urho3DNodeTreeExporter::ProcessFileSystem()
             }
         }
 
-        // grab models from the specified model folder. all files with .mdl extension are considered a mesh
-        for (String path : m_modelFolders){
-            String dir = resDir+path;
-            fs->ScanDir(dirFiles,dir,"*.mdl",SCAN_FILES,true);
-            for (String foundModel : dirFiles){
-                auto modelResourceName = path+"/"+foundModel;
-                modelFiles.Push(modelResourceName);
-            }
-        }
-
         for (String path : m_animationFolders){
             String dir = resDir+path;
             fs->ScanDir(dirFiles,dir,"*.ani",SCAN_FILES,true);
@@ -165,7 +155,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
             NodeAddEnumElement(enumElems,matName,matName,"Material "+matName,"MATERIAL",id);
             URHO3D_LOGINFOF("MATERIAL: %s",matName.CString());
         }
-        NodeAddPropEnum(predefMaterialNode,"Material",enumElems,"0");
+        NodeAddPropEnum(predefMaterialNode,"Material",enumElems,false,"0");
 
         nodes.Push(predefMaterialNode);
     }
@@ -184,16 +174,16 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeAddEnumElement(cullModeEnum,"cw");
         NodeAddEnumElement(cullModeEnum,"none");
         // cull-mode
-        NodeAddPropEnum(materialNode,"cull",cullModeEnum,"0");
+        NodeAddPropEnum(materialNode,"cull",cullModeEnum,false,"0");
         // shadowcull-mode
-        NodeAddPropEnum(materialNode,"shadowcull",cullModeEnum,"0");
+        NodeAddPropEnum(materialNode,"shadowcull",cullModeEnum,false,"0");
 
         JSONArray fillEnum;
         NodeAddEnumElement(fillEnum,"solid");
         NodeAddEnumElement(fillEnum,"wireframe");
         NodeAddEnumElement(fillEnum,"point");
         // fill-mode
-        NodeAddPropEnum(materialNode,"fill",fillEnum,"0");
+        NodeAddPropEnum(materialNode,"fill",fillEnum,false,"0");
 
         nodes.Push(materialNode);
     }
@@ -231,7 +221,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeAddEnumElement(predefNames,"Roughness");
         NodeAddEnumElement(predefNames,"Metallic");
 
-        NodeAddPropEnum(parameterNode,"name",predefNames,"0");
+        NodeAddPropEnum(parameterNode,"name",predefNames,true,"0");
 
         NodeAddProp(parameterNode,"value",NT_STRING,"0");
 
@@ -315,10 +305,23 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         for (String techniqueName : techniqueFiles){
             StringHash hash(techniqueName);
             String id(hash.Value() % 10000000);
-            NodeAddEnumElement(enumElems,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id);
+            String category = "Misc";
+
+            if (techniqueName.Contains("Vegetation",false)){
+                category = "Misc";
+            }
+            else if (techniqueName.Contains("PBR",false)){
+                category = "PBR";
+            }
+            else if (techniqueName.Contains("NoTexture",false)){
+                category = "NoTexture";
+            } else if (techniqueName.Contains("Diff",false)){
+                    category = "Diff";
+            }
+            NodeAddEnumElement(enumElems,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id,category);
         }
 
-        NodeAddPropEnum(techniqueNode,"Technique",enumElems,"0");
+        NodeAddPropEnum(techniqueNode,"Technique",enumElems,true,"0");
         // quality
         NodeAddProp(techniqueNode,"quality",NT_INT,"0",ST_NONE,3,0,2);
         // lod distance
@@ -349,7 +352,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
         NodeAddEnumElement(unitElems,"3");
         NodeAddEnumElement(unitElems,"4");
         NodeAddEnumElement(unitElems,"5");
-        NodeAddPropEnum(textureNode,"unit",unitElems);
+        NodeAddPropEnum(textureNode,"unit",unitElems,false);
 
 
         // dropdown to choose textures available from the resource-path
@@ -361,7 +364,7 @@ JSONObject Urho3DNodeTreeExporter::ExportMaterials()
 
             NodeAddEnumElement(enumElems,texture.resFilepath,texture.resFilepath,texture.absFilepath,"COLOR",id);
         }
-        NodeAddPropEnum(textureNode,"Texture",enumElems,"0",true);
+        NodeAddPropEnum(textureNode,"Texture",enumElems,true,"0",true);
 
 
 
@@ -428,13 +431,14 @@ void Urho3DNodeTreeExporter::NodeAddProp(JSONObject &node, const String &name, N
     node["props"]=props;
 }
 
-void Urho3DNodeTreeExporter::NodeAddPropEnum(JSONObject &node, const String &name, JSONArray &elements, const String &defaultValue, bool isPreview)
+void Urho3DNodeTreeExporter::NodeAddPropEnum(JSONObject &node, const String &name, JSONArray &elements, bool categorized,const String &defaultValue, bool isPreview)
 {
     JSONObject prop;
     prop["name"]=name;
     prop["type"]=isPreview?"enumPreview":"enum";
     prop["elements"]=elements;
     prop["default"]=defaultValue;
+    prop["use_category"]=categorized?"True":"False";
 
     if (!node.Contains("props")){
         JSONArray propsArray;
@@ -448,7 +452,7 @@ void Urho3DNodeTreeExporter::NodeAddPropEnum(JSONObject &node, const String &nam
 }
 
 
-void Urho3DNodeTreeExporter::NodeAddEnumElement(JSONArray &elements, const String &id, const String &name, const String &descr, const String &icon, const String& number)
+void Urho3DNodeTreeExporter::NodeAddEnumElement(JSONArray &elements, const String &id, const String &name, const String &descr, const String &icon, const String& number, const String& category)
 {
     JSONObject elem;
     elem["id"]=id;
@@ -456,6 +460,8 @@ void Urho3DNodeTreeExporter::NodeAddEnumElement(JSONArray &elements, const Strin
     elem["description"]=descr==""?id:descr;
     elem["icon"]=icon;
     elem["number"]=number;
+    if (category!="")
+        elem["category"]=category;
     elements.Push(elem);
 }
 
@@ -610,7 +616,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                             {
                                 NodeAddEnumElement(elements,attr.enumNames_[idx],attr.enumNames_[idx]);
                             }
-                            NodeAddPropEnum(node, attr.name_, elements,attr.defaultValue_.ToString());
+                            NodeAddPropEnum(node, attr.name_, elements,false,attr.defaultValue_.ToString());
                         }
                         break;
                     }
@@ -647,7 +653,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                     NodeAddEnumElement(enumElems,"Model;"+model,model,"Model "+model,"MESH",id);
                                 }
 
-                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                NodeAddPropEnum(node,attr.name_,enumElems,true,"0");
                                 alreadyAdded = true;
                             }
                             else if (typeName == "Animation")
@@ -663,7 +669,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                     NodeAddEnumElement(enumElems,"Animation;"+anim,anim,"Animation "+anim,"ANIM",id);
                                 }
 
-                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                NodeAddPropEnum(node,attr.name_,enumElems,true,"0");
                                 alreadyAdded = true;
 
                             }
@@ -680,7 +686,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                     NodeAddEnumElement(enumElems,"Texture;"+tex.resFilepath,tex.resFilepath,tex.absFilepath,"TEXTURE",id);
                                 }
 
-                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                NodeAddPropEnum(node,attr.name_,enumElems,true,"0");
                                 alreadyAdded = true;
 
                             }
@@ -697,7 +703,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                                     NodeAddEnumElement(enumElems,"Material;"+mat,mat,"Material "+mat,"MATERIAL",id);
                                 }
 
-                                NodeAddPropEnum(node,attr.name_,enumElems,"0");
+                                NodeAddPropEnum(node,attr.name_,enumElems,true,"0");
                                 alreadyAdded = true;
 
                             }
@@ -727,7 +733,16 @@ JSONObject Urho3DNodeTreeExporter::ExportGlobalData(){
     for (String techniqueName : techniqueFiles){
         StringHash hash(techniqueName);
         String id(hash.Value() % 10000000);
-        NodeAddEnumElement(techniques,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id);
+
+        String category = "";
+        if (techniqueName.Contains("NoTexture",false)){
+            category = "NoTexture";
+        } else if (techniqueName.Contains("Diff",false)){
+                category = "Diff";
+        }
+
+
+        NodeAddEnumElement(techniques,techniqueName,techniqueName,"Technique "+techniqueName,"COLOR",id,category);
     }
     globalData["techniques"] = techniques;
 
