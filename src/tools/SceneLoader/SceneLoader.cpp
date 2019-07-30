@@ -374,6 +374,28 @@ void SceneLoader::MoveCamera(float timeStep)
         cameraNode_->Translate(Vector3::RIGHT * MOVE_SPEED * timeStep*moveSpeed);
 }
 
+void SceneLoader::EnsureLight(Scene *scene)
+{
+    // set a light
+    // TODO: Use only the light provided by scene (once this is exported correctly)
+    PODVector<Light*> sceneLights;
+    scene->GetComponents<Light>(sceneLights,true);
+
+    if (sceneLights.Size()==0){
+        Node* lightNode = scene->CreateChild("DirectionalLight");
+
+        //lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+        lightNode->SetRotation(Quaternion(18.0f,55.0f,-17.0f));
+        Light* light = lightNode->CreateComponent<Light>();
+        light->SetLightType(LIGHT_DIRECTIONAL);
+        light->SetCastShadows(true);
+        light->SetShadowBias(BiasParameters(0.00025f, 0.5f));
+        light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
+        light->SetSpecularIntensity(0.5f);
+        //light->SetColor(Color::RED);
+    }
+}
+
 void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
 {
     using namespace FileChanged;
@@ -387,6 +409,7 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
             Scene* scene =scenes_[resName];
             scene->LoadXML(*file);
 
+            EnsureLight((scene));
             for (ViewRenderer* view : viewRenderers.Values()){
                 if (view->GetScene() == scene){
                     updatedRenderers.Insert(view);
@@ -660,6 +683,13 @@ Scene* SceneLoader::GetScene(const String &sceneName)
     Scene* newScene = new Scene(context_);
     newScene->LoadXML(*file);
     scenes_[sceneResourceName]=newScene;
+
+    PODVector<Light*> sceneLights;
+    newScene->GetComponents<Light>(sceneLights,true);
+
+    EnsureLight(newScene);
+
+
     return newScene;
 }
 
@@ -812,10 +842,6 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
     viewportCamera_ = viewportCameraNode_->CreateComponent<Camera>();
     viewportCamera_->SetFarClip(100.0f);
 
-    auto* light = viewportCameraNode_->CreateComponent<Light>();
-    light->SetLightType(LIGHT_POINT);
-    light->SetRange(30.0f);
-
     currentScene_ = initialScene;
     // create the rendertexture for this view
     renderTexture_ = new Texture2D(ctx_);
@@ -837,16 +863,15 @@ void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
     auto t = vmat.Translation();
     auto r = vmat.Rotation().EulerAngles();
     auto s = vmat.Scale();
-/*
 
     viewportCameraNode_->SetPosition(Vector3(0,0,0));
     viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_-90,0));
     viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
 
-*/
-    viewportCameraNode_->SetPosition(Vector3(0,0,0));
+
+    /*viewportCameraNode_->SetPosition(Vector3(0,0,0));
     viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,0));
-    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
+    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));*/
 
     renderSurface_->QueueUpdate();
 }

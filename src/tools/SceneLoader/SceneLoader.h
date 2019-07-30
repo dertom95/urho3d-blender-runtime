@@ -111,6 +111,8 @@ private:
 
     void HandleRequestFromBlender(const JSONObject &json);
     void UpdateCameras();
+    void EnsureLight(Scene* scene);
+
 
     Scene* GetScene(const String& sceneName);
     ViewRenderer* GetViewRenderer(int viewId);
