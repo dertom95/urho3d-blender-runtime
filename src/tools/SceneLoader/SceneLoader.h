@@ -41,10 +41,12 @@ public:
     void SetSize(int width,int height);
     void SetScene(Scene* scene);
     void SetViewMatrix(const Matrix4& vmat);
+    void SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s);
     inline SharedPtr<Texture2D> GetRenderTexture(){ return renderTexture_;}
     inline int GetId() { return viewId_;}
     inline SharedPtr<Scene> GetScene() { return currentScene_; }
     const String& GetNetId() { return netId; }
+    void RequestRender();
 private:
     String netId;
     int viewId_;
@@ -117,6 +119,7 @@ private:
     Scene* GetScene(const String& sceneName);
     ViewRenderer* GetViewRenderer(int viewId);
     ViewRenderer* CreateViewRenderer(Context* ctx, Scene* scene, int width, int height);
+    void UpdateViewRenderer(ViewRenderer* renderer);
 
     void InitEditor();
   //  void CreateScreenshot();

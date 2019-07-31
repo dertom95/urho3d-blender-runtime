@@ -138,6 +138,7 @@ void BlenderNetwork::HandleBeginFrame(StringHash eventType, VariantMap &eventDat
 void BlenderNetwork::Close()
 {
     inSocket_.close();
+    outSocket_.close();
     ctx.close();
 }
 

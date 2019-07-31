@@ -412,7 +412,7 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
             EnsureLight((scene));
             for (ViewRenderer* view : viewRenderers.Values()){
                 if (view->GetScene() == scene){
-                    updatedRenderers.Insert(view);
+                    view->RequestRender();
                 }
             }
         }
@@ -682,6 +682,13 @@ Scene* SceneLoader::GetScene(const String &sceneName)
     }
     Scene* newScene = new Scene(context_);
     newScene->LoadXML(*file);
+    if (scenes_.Size()){
+        Renderer* renderer = GetSubsystem<Renderer>();
+
+        // Set up a viewport to the Renderer subsystem so that the 3D scene can be seen
+        SharedPtr<Viewport> viewport(new Viewport(context_, scene_, cameraNode_->GetComponent<Camera>()));
+        renderer->GetViewport(0)->SetScene(newScene);
+    }
     scenes_[sceneResourceName]=newScene;
 
     PODVector<Light*> sceneLights;
@@ -704,6 +711,10 @@ Matrix4 JSON2Matrix(const JSONArray& mat4Vecs)
                 v22.x_,v22.y_,v22.z_,v22.w_,
                 v23.x_,v23.y_,v23.z_,v23.w_,
                 v24.x_,v24.y_,v24.z_,v24.w_);
+//    Matrix4 vmat(v21.x_,v21.y_,v21.z_,v21.w_,
+//                v22.x_,v22.y_,v22.z_,v22.w_,
+//                v23.x_,v23.y_,v23.z_,v23.w_,
+//                v24.x_,v24.y_,v24.z_,v24.w_);
     return vmat;
 }
 
@@ -731,7 +742,7 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         Scene* scene = GetScene(sceneName);
         viewRenderer = new ViewRenderer(context_,viewId,scene,width,height);
         viewRenderers[viewId] = viewRenderer;
-        updatedRenderers.Insert(viewRenderer);
+        UpdateViewRenderer(viewRenderer);
     }
 
     if (!viewRenderer) return;
@@ -741,13 +752,22 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         width = resolution["width"].GetInt();
         height = resolution["height"].GetInt();
         viewRenderer->SetSize(width,height);
-        updatedRenderers.Insert(viewRenderer);
+        UpdateViewRenderer(viewRenderer);
     }
 
     if (json.Contains("view_matrix")){
+        Vector3 t(JSON2Vec3(json["view_matrix_trans"]->GetObject()));
+        Vector3 r(JSON2Vec3(json["view_matrix_euler"]->GetObject()));
+        Vector3 s(JSON2Vec3(json["view_matrix_scale"]->GetObject()));
         Matrix4 vmat(JSON2Matrix(json["view_matrix"]->GetArray()));
+        //viewRenderer->SetViewMatrix(vmat);
+
+        auto t_mat = vmat.Translation();
+        auto r_mat = vmat.Rotation().EulerAngles();
+        auto s_mat = vmat.Scale();
+
         viewRenderer->SetViewMatrix(vmat);
-        updatedRenderers.Insert(viewRenderer);
+        UpdateViewRenderer(viewRenderer);
         /*JSONArray matrix = json["perspective_matrix"]->GetArray();
         Vector4 v1 = JSON2Vec4(matrix[0].GetObject());
         Vector4 v2 = JSON2Vec4(matrix[1].GetObject());
@@ -830,6 +850,12 @@ void SceneLoader::HandleAfterRender(StringHash eventType, VariantMap& eventData)
 }
 
 
+void SceneLoader::UpdateViewRenderer(ViewRenderer *renderer)
+{
+    renderer->RequestRender();
+    updatedRenderers.Insert(renderer);
+}
+
 ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height)
     : ctx_(ctx),
       viewId_(id),
@@ -838,7 +864,9 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
 {
 //    viewportCameraNode_ = new Node(ctx);
     netId = "runtime-"+String(id);
-    viewportCameraNode_ = initialScene->CreateChild("Camera");
+    viewportCameraNode_ = new Node(ctx);
+    //viewportCameraNode_->SetName("Camera-"+String(id));
+    viewportCameraNode_ = initialScene->CreateChild("Camera-"+String(id));
     viewportCamera_ = viewportCameraNode_->CreateComponent<Camera>();
     viewportCamera_->SetFarClip(100.0f);
 
@@ -863,15 +891,32 @@ void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
     auto t = vmat.Translation();
     auto r = vmat.Rotation().EulerAngles();
     auto s = vmat.Scale();
+    SetViewMatrix(t,r,s);
+}
 
+void ViewRenderer::SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s)
+{
+
+
+   /* viewportCameraNode_->SetPosition(Vector3(0,0,0));
+    viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_+90,0));
+    viewportCameraNode_->Translate(Vector3(t.x_,t.y_,t.z_));*/
+
+
+  /*  viewportCameraNode_->SetPosition(Vector3(0,0,0));
+    viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,0));
+    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
+*/
     viewportCameraNode_->SetPosition(Vector3(0,0,0));
+    auto q = Quaternion(r.x_+90,-r.z_+90,0);
+    auto qr = q.EulerAngles();
     viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_-90,0));
     viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
 
+    auto rot = viewportCameraNode_->GetRotation().EulerAngles();
+    auto trans = viewportCameraNode_->GetPosition();
 
-    /*viewportCameraNode_->SetPosition(Vector3(0,0,0));
-    viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,0));
-    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));*/
+    //viewportCameraNode_->SetScale(Vector3(-1,1,1));
 
     renderSurface_->QueueUpdate();
 }
@@ -885,5 +930,10 @@ void ViewRenderer::SetSize(int width, int height)
     viewport_ = new Viewport(ctx_, currentScene_, viewportCamera_);
     renderSurface_->SetViewport(0, viewport_);
     renderSurface_->SetUpdateMode(SURFACE_MANUALUPDATE);
+    renderSurface_->QueueUpdate();
+}
+
+void ViewRenderer::RequestRender()
+{
     renderSurface_->QueueUpdate();
 }
