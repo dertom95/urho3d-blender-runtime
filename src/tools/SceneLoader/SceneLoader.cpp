@@ -53,6 +53,7 @@ SceneLoader::SceneLoader(Context* context) :
     ,sceneName("Scene.xml")
     ,exportPath("./urho3d_components.json")
     ,currentCamId(0)
+    ,showViewportId(0)
     ,updatedCamera(false)
     ,editorVisible_(false)
 
@@ -202,7 +203,8 @@ bool SceneLoader::CreateScene()
     // Create the camera (not included in the scene file)
     cameraNode_ = scene_->CreateChild("Camera");
     Camera* camera = cameraNode_->CreateComponent<Camera>();
-    cameraNode_->SetPosition(Vector3(0.0f, 2.0f, -10.0f));
+    cameraNode_->SetPosition(Vector3(0.0f, 50.0f, 0.0f));
+    cameraNode_->SetRotation(Quaternion(90,-90,0));
     Globals::instance()->camera=camera;
 
     // set a light
@@ -471,6 +473,16 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
         if (!editorVisible_){
             InitEditor();
             editorVisible_=true;
+        }
+    }
+    else if (input->GetKeyPress(KEY_V)){
+        if (viewRenderers.Size()>0){
+            if (showViewportId>viewRenderers.Size()) {
+                showViewportId = 0;
+            }
+            auto key = viewRenderers.Keys()[showViewportId];
+            ViewRenderer* vr = viewRenderers[key];
+            vr->Show();
         }
     }
     else if (input->GetKeyPress(KEY_0)){
@@ -760,11 +772,21 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         Vector3 r(JSON2Vec3(json["view_matrix_euler"]->GetObject()));
         Vector3 s(JSON2Vec3(json["view_matrix_scale"]->GetObject()));
         Matrix4 vmat(JSON2Matrix(json["view_matrix"]->GetArray()));
+        Matrix4 pmat(JSON2Matrix(json["perspective_matrix"]->GetArray()));
+        Vector3 view_location(JSON2Vec3(json["view_location"]->GetObject()));
+        Vector4 vr(JSON2Vec4(json["view_rotation"]->GetObject()));
+        Vector3 view_rotation_euler(Quaternion(vr.x_,vr.y_,vr.z_,vr.w_).EulerAngles());
+        String perspectiveType = json["view_perspective_type"]->GetString();
         //viewRenderer->SetViewMatrix(vmat);
 
-        auto t_mat = vmat.Translation();
-        auto r_mat = vmat.Rotation().EulerAngles();
-        auto s_mat = vmat.Scale();
+        auto vmat_t_mat = vmat.Translation();
+        auto vmat_r_mat = vmat.Rotation().EulerAngles();
+        auto vmat_s_mat = vmat.Scale();
+
+        auto pmat_t_mat = pmat.Translation();
+        auto pmat_r_mat = pmat.Rotation().EulerAngles();
+        auto pmat_s_mat = pmat.Scale();
+
 
         viewRenderer->SetViewMatrix(vmat);
         UpdateViewRenderer(viewRenderer);
@@ -868,8 +890,10 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
     //viewportCameraNode_->SetName("Camera-"+String(id));
     viewportCameraNode_ = initialScene->CreateChild("Camera-"+String(id));
     viewportCamera_ = viewportCameraNode_->CreateComponent<Camera>();
-    viewportCamera_->SetFarClip(100.0f);
-
+    viewportCamera_->SetFarClip(500.0f);
+//    viewportCamera_->SetPosition(Vector3(0.0, 50.0f, 0.0f));
+//    viewportCamera_->SetRotation(Quaternion(90,-90,0));
+   // viewportCamera_->SetFlipVertical(true);
     currentScene_ = initialScene;
     // create the rendertexture for this view
     renderTexture_ = new Texture2D(ctx_);
@@ -897,26 +921,21 @@ void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
 void ViewRenderer::SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s)
 {
 
-
-   /* viewportCameraNode_->SetPosition(Vector3(0,0,0));
-    viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_+90,0));
-    viewportCameraNode_->Translate(Vector3(t.x_,t.y_,t.z_));*/
-
-
-  /*  viewportCameraNode_->SetPosition(Vector3(0,0,0));
-    viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,0));
-    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
-*/
-    viewportCameraNode_->SetPosition(Vector3(0,0,0));
-    auto q = Quaternion(r.x_+90,-r.z_+90,0);
-    auto qr = q.EulerAngles();
-    viewportCameraNode_->SetRotation(Quaternion(-r.x_+90,-r.z_-90,0));
-    viewportCameraNode_->Translate(Vector3(-t.x_,t.y_,t.z_));
-
+       if (r.y_>-10 && r.y_<10){
+            viewportCameraNode_->SetPosition(Vector3(0,0,0));
+            viewportCameraNode_->SetRotation(Quaternion(r.x_+90,r.z_-90,-r.y_));
+            viewportCameraNode_->Translate(Vector3(-t.x_,-t.y_,t.z_));
+       } else {
+           viewportCameraNode_->SetPosition(Vector3(0,0,0));
+           viewportCameraNode_->SetRotation(Quaternion(r.x_-90,r.z_-90,-r.y_));
+           viewportCameraNode_->Translate(Vector3(-t.x_,-t.y_,t.z_));
+       }
+//    viewportCameraNode_->SetPosition(Vector3(0,0,0));
+//    viewportCameraNode_->SetRotation(Quaternion(90,-90,0));
+//    //viewportCameraNode_->Translate(Vector3(0,-20,0));
+//    viewportCameraNode_->SetPosition(Vector3(0,30,0));
     auto rot = viewportCameraNode_->GetRotation().EulerAngles();
-    auto trans = viewportCameraNode_->GetPosition();
-
-    //viewportCameraNode_->SetScale(Vector3(-1,1,1));
+    URHO3D_LOGINFOF("ROTATION:%s",rot.ToString().CString());
 
     renderSurface_->QueueUpdate();
 }
@@ -936,4 +955,12 @@ void ViewRenderer::SetSize(int width, int height)
 void ViewRenderer::RequestRender()
 {
     renderSurface_->QueueUpdate();
+}
+
+void ViewRenderer::Show()
+{
+    Renderer* renderer = ctx_->GetSubsystem<Renderer>();
+    Viewport* viewport = renderer->GetViewport(0);
+    viewport->SetScene(currentScene_);
+    viewport->SetCamera(viewportCamera_);
 }

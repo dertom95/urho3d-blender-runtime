@@ -47,6 +47,7 @@ public:
     inline SharedPtr<Scene> GetScene() { return currentScene_; }
     const String& GetNetId() { return netId; }
     void RequestRender();
+    void Show();
 private:
     String netId;
     int viewId_;
@@ -134,6 +135,7 @@ private:
     String customUI;
 
     int currentCamId;
+    int showViewportId;
     bool updatedCamera;
     PODVector<Camera*> cameras;
 
