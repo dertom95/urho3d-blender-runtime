@@ -483,6 +483,7 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
             auto key = viewRenderers.Keys()[showViewportId];
             ViewRenderer* vr = viewRenderers[key];
             vr->Show();
+            showViewportId++;
         }
     }
     else if (input->GetKeyPress(KEY_0)){
