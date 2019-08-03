@@ -9,6 +9,8 @@
 #include <tools/SceneLoader/SampleComponents/DummyComponent.h>
 #include <tools/SceneLoader/SampleComponents/Rotator.h>
 #include <commonComponents/ParentBone.h>
+#include <commonComponents/Character.h>
+#include <commonComponents/CharacterController.h>
 
 
 using namespace Urho3D;
