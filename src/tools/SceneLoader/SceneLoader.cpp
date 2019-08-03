@@ -422,6 +422,10 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
             }
         }
     }
+    if (resName.EndsWith("png") || resName.EndsWith("jpg") || resName.EndsWith("dds")){
+        Urho3DNodeTreeExporter* exporter = GetSubsystem<Urho3DNodeTreeExporter>();
+        exporter->Export(exportPath);
+    }
 //    else if (resName=="req2engine.json"){
 //        JSONFile json(context_);
 //        if (json.LoadFile(filename)){

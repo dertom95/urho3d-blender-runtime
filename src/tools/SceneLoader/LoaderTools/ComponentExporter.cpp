@@ -675,7 +675,7 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                             }
                             else if (typeName == "Texture2D")
                             {
-                                // dropdown to choose techniques available from the resource-path
+                                // dropdown to choose textures available from the resource-path
                                 JSONArray enumElems;
                                 NodeAddEnumElement(enumElems,"none","None","No Texture","TEXTURE");
 
@@ -760,12 +760,13 @@ JSONObject Urho3DNodeTreeExporter::ExportGlobalData(){
 
 void Urho3DNodeTreeExporter::Export(String filename)
 {
+
     ProcessFileSystem();
 
     auto materialTree = ExportMaterials();
     auto componentTree = ExportComponents();
     auto globalData = ExportGlobalData();
-
+    trees.Clear();
     trees.Push(componentTree);
     trees.Push(materialTree);
 
