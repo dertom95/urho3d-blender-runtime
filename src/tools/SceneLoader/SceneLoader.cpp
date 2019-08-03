@@ -417,6 +417,7 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
             for (ViewRenderer* view : viewRenderers.Values()){
                 if (view->GetScene() == scene){
                     view->RequestRender();
+                    UpdateViewRenderer(view);
                 }
             }
         }
