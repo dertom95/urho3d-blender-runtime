@@ -37,22 +37,26 @@ class Scene;
 
 class ViewRenderer{
 public:
-    ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height);
-    void SetSize(int width,int height);
+    ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height,float fov);
+    void SetSize(int width,int height,float fov);
     void SetScene(Scene* scene);
     void SetViewMatrix(const Matrix4& vmat);
     void SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s);
     inline SharedPtr<Texture2D> GetRenderTexture(){ return renderTexture_;}
     inline int GetId() { return viewId_;}
     inline SharedPtr<Scene> GetScene() { return currentScene_; }
+    inline SharedPtr<Camera> GetCamera() { return viewportCamera_;}
     const String& GetNetId() { return netId; }
     void RequestRender();
     void Show();
+        float fov_;
 private:
+
     String netId;
     int viewId_;
     int width_;
     int height_;
+
     Context* ctx_;
     SharedPtr<Scene> currentScene_;
     SharedPtr<RenderSurface> renderSurface_;
@@ -123,6 +127,8 @@ private:
     void UpdateViewRenderer(ViewRenderer* renderer);
 
     void InitEditor();
+
+    void ChangeFov(float delta);
   //  void CreateScreenshot();
 
   //  void HandleRequestFromBlender(const JSONObject& json);
@@ -156,4 +162,7 @@ private:
     HashMap<StringHash,Scene*> scenes_;
     HashMap<int,ViewRenderer*> viewRenderers;
     HashSet<ViewRenderer*> updatedRenderers;
+    ViewRenderer* currentViewRenderer;
+
+    JSONFile jsonfile_;
 };

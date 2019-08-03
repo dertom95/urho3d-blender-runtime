@@ -62,6 +62,8 @@ SceneLoader::SceneLoader(Context* context) :
     ,automaticIntervallScreenshots(false)
     ,rtRenderRequested(false)
     ,surface(0)
+    ,jsonfile_(context)
+    ,currentViewRenderer(0)
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -430,6 +432,16 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
 }
 
 
+void SceneLoader::ChangeFov(float delta)
+{
+    Renderer* renderer = GetSubsystem<Renderer>();
+    Viewport* viewport = renderer->GetViewport(0);
+    Camera* cam = viewport->GetCamera();
+    float fov = cam->GetFov();
+    fov = fov + delta;
+    cam->SetFov(fov);
+}
+
 void SceneLoader::HandleBlenderMSG(StringHash eventType, VariantMap &eventData)
 {
     using namespace BlenderConnect;
@@ -484,7 +496,18 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
             ViewRenderer* vr = viewRenderers[key];
             vr->Show();
             showViewportId++;
+            currentViewRenderer = vr;
         }
+    }
+    else if (input->GetKeyPress(KEY_KP_PLUS)){
+        ChangeFov(0.1);
+        if (currentViewRenderer)
+            UpdateViewRenderer(currentViewRenderer);
+    }
+    else if (input->GetKeyPress(KEY_KP_MINUS)){
+        ChangeFov(-0.1);
+        if (currentViewRenderer)
+            UpdateViewRenderer(currentViewRenderer);
     }
     else if (input->GetKeyPress(KEY_0)){
         BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
@@ -741,7 +764,7 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
 
     int width = 100;
     int height = 100;
-
+    float fov = 45;
 
 
     bool newRenderer = false;
@@ -749,11 +772,12 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         auto resolution = json["resolution"]->GetObject();
         width = resolution["width"].GetInt();
         height = resolution["height"].GetInt();
+        fov = json["fov"]->GetFloat();
 
         newRenderer = true;
         String sceneName = json["scene_name"]->GetString();
         Scene* scene = GetScene(sceneName);
-        viewRenderer = new ViewRenderer(context_,viewId,scene,width,height);
+        viewRenderer = new ViewRenderer(context_,viewId,scene,width,height,fov);
         viewRenderers[viewId] = viewRenderer;
         UpdateViewRenderer(viewRenderer);
     }
@@ -764,7 +788,8 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         auto resolution = json["resolution"]->GetObject();
         width = resolution["width"].GetInt();
         height = resolution["height"].GetInt();
-        viewRenderer->SetSize(width,height);
+        fov = json["fov"]->GetFloat();
+        viewRenderer->SetSize(width,height,fov);
         UpdateViewRenderer(viewRenderer);
     }
 
@@ -853,8 +878,15 @@ void SceneLoader::HandleAfterRender(StringHash eventType, VariantMap& eventData)
         unsigned char* _ImageData = new unsigned char[imageSize];
         rtTexture->GetData(0, _ImageData);
 
+        JSONObject json;
+        json["width"]=rtTexture->GetWidth();
+        json["height"]=rtTexture->GetHeight();
+        jsonfile_.GetRoot().Set("resolution",json);
+        jsonfile_.GetRoot().Set("fov",view->GetCamera()->GetFov());
+        jsonfile_.GetRoot().Set("initial-fov",view->fov_);
+
         BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
-        bN->Send(view->GetNetId()+" draw bin",_ImageData,imageSize);
+        bN->Send(view->GetNetId()+" draw bin",_ImageData,imageSize, jsonfile_.ToString());
 
         //_pImage->SavePNG(additionalResourcePath+"/Screenshot"+String(view->GetId())+".png");
 
@@ -879,11 +911,12 @@ void SceneLoader::UpdateViewRenderer(ViewRenderer *renderer)
     updatedRenderers.Insert(renderer);
 }
 
-ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height)
+ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height,float fov)
     : ctx_(ctx),
       viewId_(id),
       width_(width),
-      height_(height)
+      height_(height),
+      fov_(fov)
 {
 //    viewportCameraNode_ = new Node(ctx);
     netId = "runtime-"+String(id);
@@ -898,7 +931,7 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
     currentScene_ = initialScene;
     // create the rendertexture for this view
     renderTexture_ = new Texture2D(ctx_);
-    SetSize(width,height);
+    SetSize(width,height,fov);
 }
 
 void ViewRenderer::SetScene(Scene *scene)
@@ -941,11 +974,16 @@ void ViewRenderer::SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3
     renderSurface_->QueueUpdate();
 }
 
-void ViewRenderer::SetSize(int width, int height)
+void ViewRenderer::SetSize(int width, int height, float fov)
 {
-    renderTexture_->SetSize(width_,height_,Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
-    renderTexture_->SetFilterMode(FILTER_BILINEAR);
+    width_ = width;
+    height_ = height;
+    fov_ = fov;
 
+    viewportCamera_->SetFov(fov);
+
+    bool result = renderTexture_->SetSize(width,height,Graphics::GetRGBAFormat(), TEXTURE_RENDERTARGET);
+    renderTexture_->SetFilterMode(FILTER_BILINEAR);
     renderSurface_ = renderTexture_->GetRenderSurface();
     viewport_ = new Viewport(ctx_, currentScene_, viewportCamera_);
     renderSurface_->SetViewport(0, viewport_);

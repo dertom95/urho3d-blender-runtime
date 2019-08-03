@@ -72,12 +72,14 @@ void BlenderNetwork::CheckNetwork()
     if (ok){
         int mS = multipart.size();
 
-        if (mS != 2){
+        if (mS != 3){
             URHO3D_LOGERRORF("BlenderNetwork: WRONG AMOUNT OF MULTIPART_MSGs %i",mS);
             return;
         }
 
         auto _topic = multipart.popstr();
+        auto _meta = multipart.popstr();
+
         Vector<String> topicSplit = String(_topic.c_str()).Split(' ');
 
         if (topicSplit.Size() != 3){
@@ -88,12 +90,20 @@ void BlenderNetwork::CheckNetwork()
         auto topic = topicSplit[0];
         auto subtype = topicSplit[1];
         auto datatype = topicSplit[2];
+        auto meta = String(_meta.c_str());
 
         using namespace BlenderConnect;
         VariantMap map;
         map[P_TOPIC]=topic;
         map[P_SUBTYPE]=subtype;
         map[P_DATATYPE]=datatype;
+
+        if (meta!=""){
+            JSONFile metaJson(context_);
+            metaJson.FromString(meta);
+            auto root = metaJson.GetRoot().GetObject();
+            map[P_META]=MakeCustomValue(root);
+        }
 
         zmq_msg = multipart.pop();
         if (datatype == "text"){
@@ -142,20 +152,22 @@ void BlenderNetwork::Close()
     ctx.close();
 }
 
-void BlenderNetwork::Send(const String& topic, void *buffer,int length)
+void BlenderNetwork::Send(const String& topic, void *buffer,int length, const String& meta)
 {
     zmq::multipart_t multipart;
     multipart.addstr(topic.CString());
+    multipart.addstr(meta.CString());
     multipart.add(zmq::message_t(buffer,length));
     multipart.send(outSocket_);
 }
 
-void BlenderNetwork::Send(const String& topic, const String& txtData)
+void BlenderNetwork::Send(const String& topic, const String& txtData, const String& meta)
 {
     zmq::multipart_t multipart;
 //    multipart.push(zmq::message_t(topic.CString(),topic.Length()));
 //    multipart.push(zmq::message_t(txtData.CString(),topic.Length()));
     multipart.addstr(topic.CString());
+    multipart.addstr(meta.CString());
     multipart.addstr(txtData.CString());
     multipart.send(outSocket_);
 }
