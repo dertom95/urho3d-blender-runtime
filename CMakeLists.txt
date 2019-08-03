@@ -14,7 +14,7 @@ if (COMMAND cmake_policy)
 endif ()
 
 # Set project name
-project (TheSupergame)
+project (saalis)
 
 # Set CMake modules search path
 set (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
