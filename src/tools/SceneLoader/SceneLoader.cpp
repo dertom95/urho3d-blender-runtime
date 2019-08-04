@@ -254,9 +254,9 @@ void SceneLoader::ReloadScene()
     updatedCamera = false;
     ResourceCache* cache = GetSubsystem<ResourceCache>();
 
-    SharedPtr<File> file = cache->GetFile("Scenes/Scene.xml");
+    SharedPtr<File> file = cache->GetFile("Scenes/"+sceneName);
     if (file.Null()){
-        URHO3D_LOGERROR("SceneLoader could not find 'Scenes/Scene.xml' in its resource-path");
+        URHO3D_LOGERRORF("SceneLoader could not find 'Scenes/%s' in its resource-path",sceneName.CString());
         engine_->Exit();
     }
     scene_->LoadXML(*file);
@@ -934,6 +934,7 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
 //    viewportCamera_->SetRotation(Quaternion(90,-90,0));
    // viewportCamera_->SetFlipVertical(true);
     currentScene_ = initialScene;
+    currentScene_->SetUpdateEnabled(false);
     // create the rendertexture for this view
     renderTexture_ = new Texture2D(ctx_);
     SetSize(width,height,fov);
