@@ -42,6 +42,9 @@ public:
     void SetScene(Scene* scene);
     void SetViewMatrix(const Matrix4& vmat);
     void SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s);
+    void SetOrthoMode(const Matrix4& vmat,float size_);
+    void SetPerspMode(const Matrix4& vmat);
+    void SetViewData(bool orthoMode,const Vector3& pos,const Vector3& dir,const Vector3& up,float orthosize);
     inline SharedPtr<Texture2D> GetRenderTexture(){ return renderTexture_;}
     inline int GetId() { return viewId_;}
     inline SharedPtr<Scene> GetScene() { return currentScene_; }
@@ -56,6 +59,8 @@ private:
     int viewId_;
     int width_;
     int height_;
+    float orthosize_;
+    bool orthoMode_;
 
     Context* ctx_;
     SharedPtr<Scene> currentScene_;

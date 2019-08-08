@@ -14,7 +14,7 @@ if (COMMAND cmake_policy)
 endif ()
 
 # Set project name
-project (saalis)
+project (TheGame)
 
 # Set CMake modules search path
 set (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
@@ -34,8 +34,9 @@ INCLUDE_DIRECTORIES(
     src/3rd/cppzmq
 )
 
-set (GAME_ONLY_SRC
-    src/game/Main.cpp src/game/Main.h
+file (GLOB_RECURSE GAME_FILES
+    "src/game/*.h"
+    "src/game/*.cpp"
 )
 
 set (GAME_COMMON
@@ -102,8 +103,8 @@ setup_main_executable ()
 # compile game
 set (TARGET_NAME ${PROJECT_NAME})
 set (SOURCE_FILES
-    ${COMMON_SOURCE_FILES}
-    ${GAME_ONLY_SRC}
+    ${COMMON_COMPONENTS_SOURCE}
+    ${GAME_FILES}
 )
 setup_main_executable ()
 

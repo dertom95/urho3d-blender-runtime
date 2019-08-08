@@ -38,6 +38,7 @@
 
 #include "LoaderTools/ComponentExporter.h"
 #include "commonComponents/CommonComponents.h"
+#include "SampleComponents/SampleComponents.h"
 
 #include "SampleComponents/PlayAnimation.h"
 #include "game/gameComponents/GameComponents.h"
@@ -71,7 +72,7 @@ SceneLoader::SceneLoader(Context* context) :
     // register group instance component
     CommonComponents::RegisterComponents(context);
     GameComponents::RegisterComponents(context);
-
+    SampleComponents::RegisterComponents(context);
 
     engineParameters_[EP_WINDOW_RESIZABLE]=true;
 }
@@ -799,16 +800,18 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
     }
 
     if (json.Contains("view_matrix")){
-        Vector3 t(JSON2Vec3(json["view_matrix_trans"]->GetObject()));
-        Vector3 r(JSON2Vec3(json["view_matrix_euler"]->GetObject()));
-        Vector3 s(JSON2Vec3(json["view_matrix_scale"]->GetObject()));
         Matrix4 vmat(JSON2Matrix(json["view_matrix"]->GetArray()));
         Matrix4 pmat(JSON2Matrix(json["perspective_matrix"]->GetArray()));
-        Vector3 view_location(JSON2Vec3(json["view_location"]->GetObject()));
-        Vector4 vr(JSON2Vec4(json["view_rotation"]->GetObject()));
-        Vector3 view_rotation_euler(Quaternion(vr.x_,vr.y_,vr.z_,vr.w_).EulerAngles());
+
+        Vector3 pos(JSON2Vec3(json["view_position"]->GetObject()));
+        Vector3 dir(JSON2Vec3(json["view_direction"]->GetObject()));
+        Vector3 up(JSON2Vec3(json["view_up"]->GetObject()));
+
+
         String perspectiveType = json["view_perspective_type"]->GetString();
         //viewRenderer->SetViewMatrix(vmat);
+
+        auto view_distance = json["view_distance"]->GetFloat();
 
         auto vmat_t_mat = vmat.Translation();
         auto vmat_r_mat = vmat.Rotation().EulerAngles();
@@ -819,7 +822,16 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         auto pmat_s_mat = pmat.Scale();
 
 
-        viewRenderer->SetViewMatrix(vmat);
+//        if (perspectiveType == "ORTHO"){
+//            viewRenderer->SetOrthoMode(vmat,view_distance);
+//        } else {
+//            viewRenderer->SetPerspMode(vmat);
+//        }
+
+        bool isOrthoMode = perspectiveType == "ORTHO";
+        viewRenderer->SetViewData(isOrthoMode,pos,dir,up,view_distance);
+
+
         UpdateViewRenderer(viewRenderer);
         /*JSONArray matrix = json["perspective_matrix"]->GetArray();
         Vector4 v1 = JSON2Vec4(matrix[0].GetObject());
@@ -921,7 +933,9 @@ ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,i
       viewId_(id),
       width_(width),
       height_(height),
-      fov_(fov)
+      fov_(fov),
+      orthoMode_(false),
+      orthosize_(0)
 {
 //    viewportCameraNode_ = new Node(ctx);
     netId = "runtime-"+String(id);
@@ -950,13 +964,52 @@ void ViewRenderer::SetScene(Scene *scene)
     renderSurface_->QueueUpdate();
 }
 
-void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
+void ViewRenderer::SetOrthoMode(const Matrix4& vmat,float size_)
 {
     auto t = vmat.Translation();
     auto r = vmat.Rotation().EulerAngles();
     auto s = vmat.Scale();
     SetViewMatrix(t,r,s);
+  //  auto invDirection = viewportCameraNode_->GetDirection()*-2;
+//    viewportCameraNode_->Translate(invDirection);
+    viewportCamera_->SetOrthographic(true);
+    viewportCamera_->SetOrthoSize(size_);
 }
+
+void ViewRenderer::SetPerspMode(const Matrix4 &vmat)
+{
+    if (viewportCamera_->IsOrthographic()){
+        viewportCamera_->ResetToDefault();
+    }
+    SetViewMatrix(vmat);
+}
+
+void ViewRenderer::SetViewData(bool ortho,const Vector3 &pos, const Vector3 &dir, const Vector3 &up, float orthosize)
+{
+    if (ortho){
+        viewportCamera_->SetOrthographic(true);
+        viewportCamera_->SetOrthoSize(orthosize);
+        orthosize_ = orthosize;
+        orthoMode_ = true;
+    } else if (viewportCamera_->IsOrthographic() ){
+        orthoMode_ = false;
+        viewportCamera_->ResetToDefault();
+    }
+    viewportCameraNode_->SetPosition(Vector3(pos.x_,pos.z_,pos.y_));
+    Quaternion quat;
+    quat.FromLookRotation(Vector3(dir.x_,dir.z_,dir.y_),Vector3(up.x_,up.z_,up.y_));
+    viewportCameraNode_->SetRotation(quat);
+}
+
+void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)
+{
+    viewportCamera_->SetOrthographic(false);
+    auto t = vmat.Translation();
+    auto r = vmat.Rotation().EulerAngles();
+    auto s = vmat.Scale();
+    SetViewMatrix(t,r,s);
+}
+
 
 void ViewRenderer::SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s)
 {
