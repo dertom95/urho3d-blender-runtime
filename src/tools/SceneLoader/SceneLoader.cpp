@@ -440,9 +440,14 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
 
 void SceneLoader::ChangeFov(float delta)
 {
-    Renderer* renderer = GetSubsystem<Renderer>();
-    Viewport* viewport = renderer->GetViewport(0);
-    Camera* cam = viewport->GetCamera();
+    Camera* cam = nullptr;
+    if (currentViewRenderer){
+        Renderer* renderer = GetSubsystem<Renderer>();
+        Viewport* viewport = renderer->GetViewport(0);
+        cam = viewport->GetCamera();
+    } else {
+        cam = currentViewRenderer->GetCamera();
+    }
     float fov = cam->GetFov();
     fov = fov + delta;
     cam->SetFov(fov);
@@ -505,13 +510,13 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
             currentViewRenderer = vr;
         }
     }
-    else if (input->GetKeyPress(KEY_KP_PLUS)){
-        ChangeFov(0.1);
+    else if (input->GetKeyDown(KEY_KP_PLUS)){
+        ChangeFov(0.05);
         if (currentViewRenderer)
             UpdateViewRenderer(currentViewRenderer);
     }
-    else if (input->GetKeyPress(KEY_KP_MINUS)){
-        ChangeFov(-0.1);
+    else if (input->GetKeyDown(KEY_KP_MINUS)){
+        ChangeFov(-0.05);
         if (currentViewRenderer)
             UpdateViewRenderer(currentViewRenderer);
     }
@@ -800,6 +805,8 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
     }
 
     if (json.Contains("view_matrix")){
+        fov = json["fov"]->GetFloat();
+
         Matrix4 vmat(JSON2Matrix(json["view_matrix"]->GetArray()));
         Matrix4 pmat(JSON2Matrix(json["perspective_matrix"]->GetArray()));
 
@@ -829,7 +836,7 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
 //        }
 
         bool isOrthoMode = perspectiveType == "ORTHO";
-        viewRenderer->SetViewData(isOrthoMode,pos,dir,up,view_distance);
+        viewRenderer->SetViewData(isOrthoMode,pos,dir,up,view_distance,fov);
 
 
         UpdateViewRenderer(viewRenderer);
@@ -984,21 +991,28 @@ void ViewRenderer::SetPerspMode(const Matrix4 &vmat)
     SetViewMatrix(vmat);
 }
 
-void ViewRenderer::SetViewData(bool ortho,const Vector3 &pos, const Vector3 &dir, const Vector3 &up, float orthosize)
+void ViewRenderer::SetViewData(bool ortho,const Vector3 &pos, const Vector3 &dir, const Vector3 &up, float orthosize, float fov)
 {
     if (ortho){
         viewportCamera_->SetOrthographic(true);
+        viewportCamera_->SetFov(fov);
         viewportCamera_->SetOrthoSize(orthosize);
+        viewportCamera_->SetFarClip(10000.0f);
         orthosize_ = orthosize;
         orthoMode_ = true;
     } else if (viewportCamera_->IsOrthographic() ){
         orthoMode_ = false;
         viewportCamera_->ResetToDefault();
+        viewportCamera_->SetFov(fov);
     }
-    viewportCameraNode_->SetPosition(Vector3(pos.x_,pos.z_,pos.y_));
+    viewportCameraNode_->SetPosition(Vector3(-pos.y_,pos.z_,pos.x_));
     Quaternion quat;
-    quat.FromLookRotation(Vector3(dir.x_,dir.z_,dir.y_),Vector3(up.x_,up.z_,up.y_));
+    quat.FromLookRotation(Vector3(-dir.y_,dir.z_,dir.x_),Vector3(-up.y_,up.z_,up.x_));
     viewportCameraNode_->SetRotation(quat);
+
+    auto _pos = viewportCameraNode_->GetPosition();
+    auto _rot = viewportCameraNode_->GetRotation().EulerAngles();
+
 }
 
 void ViewRenderer::SetViewMatrix(const Matrix4 &vmat)

@@ -44,11 +44,12 @@ public:
     void SetViewMatrix(const Vector3& t,const Vector3& r,const Vector3& s);
     void SetOrthoMode(const Matrix4& vmat,float size_);
     void SetPerspMode(const Matrix4& vmat);
-    void SetViewData(bool orthoMode,const Vector3& pos,const Vector3& dir,const Vector3& up,float orthosize);
+    void SetViewData(bool orthoMode,const Vector3& pos,const Vector3& dir,const Vector3& up,float orthosize, float fov);
     inline SharedPtr<Texture2D> GetRenderTexture(){ return renderTexture_;}
     inline int GetId() { return viewId_;}
     inline SharedPtr<Scene> GetScene() { return currentScene_; }
     inline SharedPtr<Camera> GetCamera() { return viewportCamera_;}
+    inline SharedPtr<Viewport> GetViewport() { return viewport_;}
     const String& GetNetId() { return netId; }
     void RequestRender();
     void Show();
