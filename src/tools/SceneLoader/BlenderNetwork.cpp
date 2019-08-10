@@ -139,9 +139,6 @@ void BlenderNetwork::CheckNetwork()
 
 void BlenderNetwork::HandleBeginFrame(StringHash eventType, VariantMap &eventData)
 {
-    if (!initialized_){
-        InitNetwork();
-    }
     CheckNetwork();
 }
 
@@ -152,21 +149,21 @@ void BlenderNetwork::Close()
     ctx.close();
 }
 
-void BlenderNetwork::Send(const String& topic, void *buffer,int length, const String& meta)
+void BlenderNetwork::Send(const String& topic,const String& subtype, void *buffer,int length, const String& meta)
 {
     zmq::multipart_t multipart;
-    multipart.addstr(topic.CString());
+    multipart.addstr((topic+" "+subtype+" bin").CString());
     multipart.addstr(meta.CString());
     multipart.add(zmq::message_t(buffer,length));
     multipart.send(outSocket_);
 }
 
-void BlenderNetwork::Send(const String& topic, const String& txtData, const String& meta)
+void BlenderNetwork::Send(const String& topic,const String& subtype, const String& txtData, const String& meta)
 {
     zmq::multipart_t multipart;
 //    multipart.push(zmq::message_t(topic.CString(),topic.Length()));
 //    multipart.push(zmq::message_t(txtData.CString(),topic.Length()));
-    multipart.addstr(topic.CString());
+    multipart.addstr((topic+" "+subtype+" text").CString());
     multipart.addstr(meta.CString());
     multipart.addstr(txtData.CString());
     multipart.send(outSocket_);

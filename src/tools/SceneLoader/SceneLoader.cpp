@@ -68,7 +68,12 @@ SceneLoader::SceneLoader(Context* context) :
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
-    context->RegisterSubsystem(new BlenderNetwork(context));
+
+    BlenderNetwork* bN = new BlenderNetwork(context);
+    bN->InitNetwork();
+    context->RegisterSubsystem(bN);
+
+
     // register group instance component
     CommonComponents::RegisterComponents(context);
     GameComponents::RegisterComponents(context);
@@ -186,6 +191,10 @@ void SceneLoader::ExportComponents(const String& outputPath)
         exporter->AddCustomUIFile(customUI);
     }
     exporter->Export(outputPath);
+    BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
+    bN->Send("runtime","component-update",outputPath,"");
+
+
 }
 
 bool SceneLoader::CreateScene()
@@ -426,6 +435,8 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
     if (resName.EndsWith("png") || resName.EndsWith("jpg") || resName.EndsWith("dds")){
         Urho3DNodeTreeExporter* exporter = GetSubsystem<Urho3DNodeTreeExporter>();
         exporter->Export(exportPath);
+        BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
+        bN->Send("runtime","component-update",exportPath,"");
     }
 //    else if (resName=="req2engine.json"){
 //        JSONFile json(context_);
@@ -910,7 +921,7 @@ void SceneLoader::HandleAfterRender(StringHash eventType, VariantMap& eventData)
         jsonfile_.GetRoot().Set("initial-fov",view->fov_);
 
         BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
-        bN->Send(view->GetNetId()+" draw bin",_ImageData,imageSize, jsonfile_.ToString());
+        bN->Send(view->GetNetId(),"draw",_ImageData,imageSize, jsonfile_.ToString());
 
         //_pImage->SavePNG(additionalResourcePath+"/Screenshot"+String(view->GetId())+".png");
 
