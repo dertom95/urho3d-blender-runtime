@@ -35,13 +35,27 @@ INCLUDE_DIRECTORIES(
 )
 
 file (GLOB_RECURSE GAME_FILES
-    "src/game/*.h"
-    "src/game/*.cpp"
+    "src/game/gameComponents/*.h"
+    "src/game/gameComponents/*.cpp"
+    "src/game/gameObjects/*.h"
+    "src/game/gameObjects/*.cpp"
 )
 
+
 set (GAME_COMMON
-    src/Globals.h
+    src/game/SaalisEvents.h
+    src/game/SaalisGlobals.h
 )
+
+set (GAME_CLIENT
+    src/game/Saalis.h
+    src/game/Saalis.cpp
+)
+set (GAME_SERVER
+    src/game/SaalisServer.h
+    src/game/SaalisServer.cpp
+)
+
 
 
 file (GLOB GAME_COMPONENTS
@@ -81,7 +95,7 @@ set (COMMON_SOURCE_FILES
     ${SCENE_LOADER_COMPONENT_SAMPLES}
     ${COMMON_COMPONENTS_SOURCE}
     ${GAME_COMPONENTS}
-    ${GAME_COMMON}
+    src/Globals.h
 )
 
 set (INCLUDE_DIRS src )
@@ -105,8 +119,20 @@ set (TARGET_NAME ${PROJECT_NAME})
 set (SOURCE_FILES
     ${COMMON_COMPONENTS_SOURCE}
     ${GAME_FILES}
+    ${GAME_COMMON}
+    ${GAME_CLIENT}
 )
 setup_main_executable ()
+
+set (TARGET_NAME ${PROJECT_NAME}-server)
+set (SOURCE_FILES
+    ${COMMON_COMPONENTS_SOURCE}
+    ${GAME_FILES}
+    ${GAME_COMMON}
+    ${GAME_SERVER}
+)
+setup_main_executable ()
+
 
 
 
