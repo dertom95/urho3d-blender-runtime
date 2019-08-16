@@ -51,17 +51,22 @@ set (GAME_CLIENT
     src/game/Saalis.h
     src/game/Saalis.cpp
 )
-set (GAME_SERVER
-    src/game/SaalisServer.h
-    src/game/SaalisServer.cpp
-)
 
+set (GAME_SERVER_STARTER
+    src/game/SaalisServerStarter.h
+    src/game/SaalisServerStarter.cpp)
 
 
 file (GLOB GAME_COMPONENTS
     "src/game/gameComponents/*.h"
     "src/game/gameComponents/*.cpp" 
 )
+
+file(GLOB GAME_SERVER
+    "src/game/serverObjects/*.h"
+    "src/game/serverObjects/*.cpp"
+)
+
 
 # mandatory if you want to use special features from the blender-exporter
 file(GLOB SCENE_LOADER_COMPONENT_SAMPLES
@@ -73,6 +78,12 @@ file(GLOB COMMON_COMPONENTS_SOURCE
     "src/commonComponents/*.h"
     "src/commonComponents/*.cpp"
 )
+
+file(GLOB COMMON_OBJECTS_SOURCE
+    "src/commonObjects/*.h"
+    "src/commonObjects/*.cpp"
+)
+
 
 
 set (SCENE_LOADER_SRC
@@ -127,9 +138,11 @@ setup_main_executable ()
 set (TARGET_NAME ${PROJECT_NAME}-server)
 set (SOURCE_FILES
     ${COMMON_COMPONENTS_SOURCE}
+    ${COMMON_OBJECTS_SOURCE}
     ${GAME_FILES}
     ${GAME_COMMON}
     ${GAME_SERVER}
+    ${GAME_SERVER_STARTER}
 )
 setup_main_executable ()
 

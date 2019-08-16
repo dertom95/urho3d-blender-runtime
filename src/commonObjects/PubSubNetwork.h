@@ -26,32 +26,49 @@
 #include <Urho3D/Scene/LogicComponent.h>
 #include <Urho3D/Graphics/AnimationController.h>
 #include <3rd/cppzmq/zmq.hpp>
+#include <3rd/cppzmq/zmq_addon.hpp>
 #include <Urho3D/Urho3DAll.h>
 
 using namespace Urho3D;
 
 
-// TODO: Rebuild to be base on PubSubNetwork
+class PubSubMessage {
+public:
+    PubSubMessage(Context* ctx,const zmq::multipart_t& msg);
 
-/// Network component, responsible for physical movement according to controls, as well as animation.
-class BlenderNetwork : public Object
+    String PopString();
+    VectorBuffer PopData();
+    JSONObject PopJson();
+    inline const String& GetTopic() { return topic_;}
+private:
+    Context* ctx_;
+    zmq::multipart_t msg_;
+    String topic_;
+};
+
+
+class PubSubNetwork : public Object
 {
-    URHO3D_OBJECT(BlenderNetwork, Object);
+    URHO3D_OBJECT(PubSubNetwork, Object);
 
 public:
     /// Construct.
-    explicit BlenderNetwork(Context* context);
+    explicit PubSubNetwork(Context* context);
 
     /// Register object factory and attributes.
     static void RegisterObject(Context* context);
 
-    void InitNetwork();
+    void InitNetwork(const String& host,const String& initialFilter, int portIn, int portOut);
     void CheckNetwork();
     void Close();
     /// Handle begin frame event.
     void HandleBeginFrame(StringHash eventType, VariantMap& eventData);
-    void Send(const String& topic,const String& subtype,const String& txtData, const String& meta="");
-    void Send(const String& topic,const String& subtype,void* buffer,int length, const String& meta="");
+    void Send(const String& topic,const String& txtData,void* buffer=0,int length=0);
+    void Send(const String& topic,const StringVector& txtData,void* buffer=0,int length=0);
+    void Send(const String& topic,const String& subtype, void *buffer,int length, const String& meta);
+    void Send(const String& topic,const String& subtype, const String& txtData, const String& meta);
+
+
 private:
     bool running_;
     zmq::socket_t  inSocket_;
@@ -60,3 +77,4 @@ private:
     zmq::context_t ctx;
 
 };
+
