@@ -33,7 +33,6 @@ include (UrhoCommon)
 
 
 
-
 #subdirs(src/3rd/libzmq)
 #subdirs(src/3rd/cppzmq)
 
@@ -121,7 +120,10 @@ set (COMMON_SOURCE_FILES
     src/Globals.h
 )
 
-set (INCLUDE_DIRS src )
+set (INCLUDE_DIRS src
+    src/3rd/libzmq/include
+    src/3rd/cppzmq
+    src/3rd/nakama-cpp-sdk/include)
 
 
 set (TARGET_NAME UrhoSceneLoader)
@@ -135,9 +137,11 @@ set (SOURCE_FILES
 
 # Setup target with resource copying
 # compile sceneloader
-setup_main_executable ()
-target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
 
+setup_main_executable ()
+
+target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
+target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
 
 # compile game
 set (TARGET_NAME ${PROJECT_NAME})
@@ -146,9 +150,11 @@ set (SOURCE_FILES
     ${GAME_FILES}
     ${GAME_COMMON}
     ${GAME_CLIENT}
+    ${COMMON_OBJECTS_SOURCE}
 )
 setup_main_executable ()
 target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
+target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
 
 set (TARGET_NAME ${PROJECT_NAME}-server)
 set (SOURCE_FILES
@@ -161,7 +167,6 @@ set (SOURCE_FILES
 )
 setup_main_executable ()
 target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
-
-
+target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
 
 

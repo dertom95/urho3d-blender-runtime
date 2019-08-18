@@ -22,58 +22,46 @@
 
 #pragma once
 
-#include <Urho3D/Input/Controls.h>
-#include <Urho3D/Scene/LogicComponent.h>
-#include <Urho3D/Graphics/AnimationController.h>
-#include <3rd/cppzmq/zmq.hpp>
-#include <3rd/cppzmq/zmq_addon.hpp>
-#include <Urho3D/Resource/JSONValue.h>
+#include <Urho3D/Urho3DAll.h>
+
+#include <nakama-cpp/Nakama.h>
 
 
 using namespace Urho3D;
+using namespace Nakama;
 
-
-class PubSubMessage {
-public:
-    PubSubMessage(Context* ctx,const zmq::multipart_t& msg);
-
-    String PopString();
-    VectorBuffer PopData();
-    JSONObject PopJson();
-    inline const String& GetTopic() { return topic_;}
-private:
-    Context* ctx_;
-    zmq::multipart_t msg_;
-    String topic_;
-};
-
-
-class PubSubNetwork : public Object
+class NakamaClient : public Object
 {
-    URHO3D_OBJECT(PubSubNetwork, Object);
+    URHO3D_OBJECT(NakamaClient, Object);
 
 public:
     /// Construct.
-    explicit PubSubNetwork(Context* context);
+    explicit NakamaClient(Context* context);
+
+    virtual ~NakamaClient(){
+        int a=0;
+    }
 
     /// Register object factory and attributes.
     static void RegisterObject(Context* context);
 
-    void InitNetwork(const String& host,const String& initialFilter, int portIn, int portOut);
-    void CheckNetwork();
-    void Close();
-    /// Handle begin frame event.
-    void HandleBeginFrame(StringHash eventType, VariantMap& eventData);
-    void Send(const String& topic,const String& txtData,void* buffer=0,int length=0);
-    void Send(const String& topic,const StringVector& txtData,void* buffer=0,int length=0);
+    void Connect(const String& host="127.0.0.1",int port=DEFAULT_PORT,const String& serverKey="defaultkey");
+    void Authenticate(const String& email,const String& password, bool createIfNotExisting=false);
 
+    inline bool HasSession() { return session_!=0; }
+    inline bool SessionIsValid() { return !session_->isExpired(); }
+    inline NTimestamp SessionExpireTime() { return session_->getExpireTime(); }
+    inline String SessionUserId() { return session_->getUserId().c_str(); }
+    inline String SessionUserName() { return session_->getUsername().c_str(); }
+    inline bool IsAuthenticated() { return authenticated_; }
+    void AddLeaderboardScore(String leaderboardId,int64_t score);
+    void RequestLeaderboard(String leaderboardId,int amount=10);
+
+    void HandleBeginFrame(StringHash eventType, VariantMap& eventData);
 
 private:
-    bool running_;
-    zmq::socket_t  inSocket_;
-    zmq::socket_t  outSocket_;
-    bool initialized_;
-    zmq::context_t ctx;
-
+    NClientPtr client_;
+    NSessionPtr session_;
+    bool authenticated_;
 };
 

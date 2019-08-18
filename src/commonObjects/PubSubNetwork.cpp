@@ -84,7 +84,7 @@ void PubSubNetwork::RegisterObject(Context* context)
 //    URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Texture", GetTexture, SetTexture, ResourceRef, ResourceRef(Texture2D::GetTypeStatic()), AM_DEFAULT);
 }
 
-void PubSubNetwork::InitNetwork(const String& host, const String& initialFilter,int portIn, int portOut)
+void PubSubNetwork::InitNetwork(const String& host, const String& initialFilter,int portOut, int portIn)
 {
     inSocket_ = zmq::socket_t(ctx, zmq::socket_type::sub);
     inSocket_.connect(("tcp://"+host+":"+String(portIn)).CString());
@@ -149,26 +149,6 @@ void PubSubNetwork::Send(const String& topic,const StringVector& txtData,void* b
     }
     multipart.send(outSocket_);
 
-}
-
-void PubSubNetwork::Send(const String& topic,const String& subtype, void *buffer,int length, const String& meta)
-{
-    zmq::multipart_t multipart;
-    multipart.addstr((topic+" "+subtype+" bin").CString());
-    multipart.addstr(meta.CString());
-    multipart.add(zmq::message_t(buffer,length));
-    multipart.send(outSocket_);
-}
-
-void PubSubNetwork::Send(const String& topic,const String& subtype, const String& txtData, const String& meta)
-{
-    zmq::multipart_t multipart;
-//    multipart.push(zmq::message_t(topic.CString(),topic.Length()));
-//    multipart.push(zmq::message_t(txtData.CString(),topic.Length()));
-    multipart.addstr((topic+" "+subtype+" text").CString());
-    multipart.addstr(meta.CString());
-    multipart.addstr(txtData.CString());
-    multipart.send(outSocket_);
 }
 
 //void PubSubNetwork::CreateScreenshot()
