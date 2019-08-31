@@ -25,6 +25,7 @@
 #include <Urho3D/Urho3DAll.h>
 
 #include <nakama-cpp/Nakama.h>
+#include <commonObjects/NakamaClientEvents.h>
 
 using namespace Nakama;
 
@@ -72,6 +73,27 @@ void NakamaClient::Authenticate(const String &email, const String &password, boo
         this->session_ = session;
         this->authenticated_=true;
         //std::cout << "session token: " << session->getAuthToken() << std::endl;
+
+        bool createStatus = true; // if the server should show the user as online to others.
+        // define realtime client in your class as NRtClientPtr rtClient;
+
+        rtClient_ = client_->createRtClient(DEFAULT_PORT);
+        // define listener in your class as NRtDefaultClientListener listener;
+        listener_.setConnectCallback([]()
+        {
+            URHO3D_LOGINFO("SOCKET CONNECTED");
+        });
+
+        listener_.setMatchmakerMatchedCallback([](NMatchmakerMatchedPtr matched)
+        {
+            auto token = matched->token;
+            auto users = matched->users;
+            auto matchId = matched->matchId;
+            int a=0;
+        });
+
+        rtClient_->setListener(&listener_);
+        rtClient_->connect(session_, createStatus);
     };
 
     auto errorCallback = [](const NError& error)
@@ -80,6 +102,7 @@ void NakamaClient::Authenticate(const String &email, const String &password, boo
     };
 
     authenticated_=false;
+    //client_->authenticateDevice("123456","tomtomtom",true,successCallback,errorCallback);
     client_->authenticateEmail(email.CString(), password.CString(), "", createIfNotExisting, successCallback, errorCallback);
 }
 
@@ -98,27 +121,100 @@ void NakamaClient::AddLeaderboardScore(String leaderboardId,int64_t score)
 }
 
 
+bool NakamaClient::IsRTClientConnected()
+{
+    return rtClient_->isConnected();
+}
+
+
+void NakamaClient::AddToMatchmaker(int minCount,int maxCount,String query)
+{
+    if (!matchmakerTicket_.Empty()) return; // already matchmaking
+    if (!rtClient_->isConnected()) return;
+
+    auto successCallback = [this](const NMatchmakerTicket& ticket)
+    {
+        matchmakerTicket_ = ticket.ticket.c_str();
+        URHO3D_LOGINFOF("nakama: matchedTicket %s",ticket.ticket.c_str());
+    };
+
+    auto errorCallback = [](const NRtError& error)
+    {
+        URHO3D_LOGINFOF("nakama: error %s",error.message.c_str());
+    };
+
+    NStringMap stringProperties;
+    NStringDoubleMap numericProperties;
+
+    //stringProperties.emplace("region", "europe");
+    //numericProperties.emplace("rank", 8.0);
+
+    rtClient_->addMatchmaker(
+        minCount,
+        maxCount,
+        query.CString(),
+        stringProperties,
+        numericProperties,
+        successCallback,
+        errorCallback);
+
+}
+
+void NakamaClient::RemoveFromMatchmaker()
+{
+    if (matchmakerTicket_.Empty()) return;
+
+    auto successCallback = [this]()
+    {
+        matchmakerTicket_ = "";
+        URHO3D_LOGINFOF("nakama: removed matchmakerticket");
+    };
+
+    auto errorCallback = [](const NRtError& error)
+    {
+        URHO3D_LOGINFOF("nakama: error %s",error.message.c_str());
+    };
+
+
+    rtClient_->removeMatchmaker(std::string(matchmakerTicket_.CString())
+                                ,successCallback
+                                ,errorCallback);
+}
 
 void NakamaClient::RequestLeaderboard(String leaderboardId, int amount)
 {
-    auto successCallback = [](NLeaderboardRecordListPtr recordsList)
+    auto successCallback = [this,&leaderboardId](NLeaderboardRecordListPtr recordsList)
     {
-      for (auto& record : recordsList->records)
-      {
-        URHO3D_LOGINFOF("Record username %s and score %i",record.username.c_str(),record.score);
-      }
+        using namespace NakamaLeaderboardResult;
+        VariantMap map;
+        map[P_LEADERBOARDID]=leaderboardId;
+        map[P_RECORDS]=MakeCustomValue(recordsList->records);
+        map[P_OWNERRECORDS]=MakeCustomValue(recordsList->ownerRecords);
+        map[P_NEXTCURSOR]=String(recordsList->nextCursor.c_str());
+        map[P_PREVCURSOR]=String(recordsList->prevCursor.c_str());
+
+        SendEvent(E_NAKAMA_LEADERBOARD_RESULT,map);
     };
 
-     client_->listLeaderboardRecords(session_,
+    auto errorCallback = [](const NError& error)
+    {
+        URHO3D_LOGINFOF("nakama: error %s",error.message.c_str());
+    };
+
+
+    client_->listLeaderboardRecordsAroundOwner(session_,leaderboardId.CString(),SessionUserId().CString(),amount,successCallback,errorCallback);
+    client_->listLeaderboardRecords(session_,
       leaderboardId.CString(),
       {},
       amount,
       opt::nullopt,
-      successCallback
+      successCallback,
+      errorCallback
     );
 }
 
 void NakamaClient::HandleBeginFrame(StringHash eventType, VariantMap& eventData)
 {
     client_->tick();
+    if (rtClient_) rtClient_->tick();
 }

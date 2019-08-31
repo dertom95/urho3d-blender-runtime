@@ -25,6 +25,7 @@
 #include <Urho3D/Urho3DAll.h>
 
 #include <nakama-cpp/Nakama.h>
+#include "nakama-cpp/realtime/NRtDefaultClientListener.h"
 
 
 using namespace Urho3D;
@@ -45,7 +46,7 @@ public:
     /// Register object factory and attributes.
     static void RegisterObject(Context* context);
 
-    void Connect(const String& host="127.0.0.1",int port=DEFAULT_PORT,const String& serverKey="defaultkey");
+    void Connect(const String& host="192.168.178.36",int port=DEFAULT_PORT,const String& serverKey="defaultkey");
     void Authenticate(const String& email,const String& password, bool createIfNotExisting=false);
 
     inline bool HasSession() { return session_!=0; }
@@ -54,14 +55,23 @@ public:
     inline String SessionUserId() { return session_->getUserId().c_str(); }
     inline String SessionUserName() { return session_->getUsername().c_str(); }
     inline bool IsAuthenticated() { return authenticated_; }
+    bool IsRTClientConnected();
+    inline const String& GetMatchmakingTicket() { return matchmakerTicket_; }
+
     void AddLeaderboardScore(String leaderboardId,int64_t score);
     void RequestLeaderboard(String leaderboardId,int amount=10);
 
+    void AddToMatchmaker(int minCount,int maxCount,String query);
+    void RemoveFromMatchmaker();
     void HandleBeginFrame(StringHash eventType, VariantMap& eventData);
 
 private:
     NClientPtr client_;
     NSessionPtr session_;
     bool authenticated_;
+    NRtDefaultClientListener listener_;
+    NRtClientPtr rtClient_;
+    String matchmakerTicket_;
+
 };
 
