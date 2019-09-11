@@ -46,7 +46,7 @@ public:
     /// Register object factory and attributes.
     static void RegisterObject(Context* context);
 
-    void Connect(const String& host="192.168.178.36",int port=DEFAULT_PORT,const String& serverKey="defaultkey");
+    void Connect(const String& host="192.168.178.110",int port=DEFAULT_PORT,const String& serverKey="defaultkey");
     void Authenticate(const String& email,const String& password, bool createIfNotExisting=false);
 
     inline bool HasSession() { return session_!=0; }
