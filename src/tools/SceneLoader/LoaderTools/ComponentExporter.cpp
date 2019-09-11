@@ -1,8 +1,18 @@
 #include "ComponentExporter.h"
 
-#include <Urho3D/Urho3DAll.h>
 #include "base64.h"
 #include <Urho3D/Container/Sort.h>
+#include <Urho3D/Resource/ResourceCache.h>
+#include <Urho3D/Resource/JSONFile.h>
+#include <Urho3D/IO/File.h>
+#include <Urho3D/IO/FileSystem.h>
+#include <Urho3D/Graphics/Material.h>
+#include <Urho3D/Graphics/Technique.h>
+#include <Urho3D/IO/Log.h>
+#include <Urho3D/Container/HashMap.h>
+#include <Urho3D/Container/Str.h>
+#include <Urho3D/Core/Object.h>
+#include <Urho3D/Core/Context.h>
 
 Urho3DNodeTreeExporter::Urho3DNodeTreeExporter(Context* context, ExportMode exportMode)
     : Object(context),

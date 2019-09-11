@@ -22,10 +22,11 @@
 
 #include "PubSubNetwork.h"
 
-#include <Urho3D/Urho3DAll.h>
 #include <zmq.hpp>
 #include <zmq_addon.hpp>
 #include <CommonEvents.h>
+#include <Urho3D/Resource/JSONFile.h>
+#include <Urho3D/Core/CoreEvents.h>
 
 
 PubSubMessage::PubSubMessage(Context* ctx, const zmq::multipart_t& msg)
@@ -54,7 +55,9 @@ JSONObject PubSubMessage::PopJson()
     String popStr = PopString();
     JSONFile jsonFile(ctx_);
     jsonFile.FromString(popStr);
-    return jsonFile.GetRoot().GetObject();
+    const JSONValue& root = jsonFile.GetRoot();
+    auto result = root.GetObject();
+    return result;
 }
 
 

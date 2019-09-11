@@ -13,11 +13,18 @@ if (COMMAND cmake_policy)
     cmake_policy (SET CMP0063 OLD)
 endif ()
 
+include("CMake/HunterGate.cmake")
+
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.23.214.tar.gz"
+    SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358"
+)
+
 # Set project name
 project (TheGame)
 
 # Set CMake modules search path
-set (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
 
 # Include UrhoCommon.cmake module after setting project name
 include (UrhoCommon)
@@ -25,10 +32,15 @@ include (UrhoCommon)
 # Define target name
 
 
-subdirs(src/3rd/libzmq)
-subdirs(src/3rd/cppzmq)
 
-LINK_LIBRARIES(zmq)
+
+#subdirs(src/3rd/libzmq)
+#subdirs(src/3rd/cppzmq)
+
+hunter_add_package(ZeroMQ)
+
+find_package(ZeroMQ CONFIG REQUIRED)
+
 INCLUDE_DIRECTORIES(
     src/3rd/libzmq/include
     src/3rd/cppzmq
@@ -124,6 +136,8 @@ set (SOURCE_FILES
 # Setup target with resource copying
 # compile sceneloader
 setup_main_executable ()
+target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
+
 
 # compile game
 set (TARGET_NAME ${PROJECT_NAME})
@@ -134,6 +148,7 @@ set (SOURCE_FILES
     ${GAME_CLIENT}
 )
 setup_main_executable ()
+target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
 
 set (TARGET_NAME ${PROJECT_NAME}-server)
 set (SOURCE_FILES
@@ -145,7 +160,7 @@ set (SOURCE_FILES
     ${GAME_SERVER_STARTER}
 )
 setup_main_executable ()
-
+target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
 
 
 

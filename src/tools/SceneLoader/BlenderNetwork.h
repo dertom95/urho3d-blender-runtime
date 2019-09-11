@@ -26,7 +26,6 @@
 #include <Urho3D/Scene/LogicComponent.h>
 #include <Urho3D/Graphics/AnimationController.h>
 #include <3rd/cppzmq/zmq.hpp>
-#include <Urho3D/Urho3DAll.h>
 
 using namespace Urho3D;
 

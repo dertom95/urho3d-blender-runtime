@@ -22,10 +22,12 @@
 
 #include "BlenderNetwork.h"
 
-#include <Urho3D/Urho3DAll.h>
 #include <zmq.hpp>
 #include <zmq_addon.hpp>
 #include "CustomEvents.h"
+#include <Urho3D/Core/CoreEvents.h>
+#include <Urho3D/IO/Log.h>
+#include <Urho3D/Resource/JSONFile.h>
 
 BlenderNetwork::BlenderNetwork(Context* context) :
     Object(context)

@@ -27,7 +27,8 @@
 #include <Urho3D/Graphics/AnimationController.h>
 #include <3rd/cppzmq/zmq.hpp>
 #include <3rd/cppzmq/zmq_addon.hpp>
-#include <Urho3D/Urho3DAll.h>
+#include <Urho3D/Resource/JSONValue.h>
+
 
 using namespace Urho3D;
 
