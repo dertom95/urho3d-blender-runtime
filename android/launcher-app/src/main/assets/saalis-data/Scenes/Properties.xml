@@ -1,0 +1,39 @@
+<scene id="1">
+	<component id="1" type="Octree"/>
+	<component id="2" type="DebugRenderer"/>
+	<node id="16777216">
+		<attribute name="Name" value="Properties"/>
+		<node id="16777217">
+			<attribute name="Name" value="Cube"/>
+			<attribute name="Position" value="2.6349 0 -9.01887e-08"/>
+			<attribute name="Rotation" value="1 -0 -0 -0"/>
+			<attribute name="Scale" value="1 510 1"/>
+			<attribute name="Variables"/>
+			<attribute name="Tags">
+				<string value="Collection_recursive"/>
+				<string value="player"/>
+				<string value="player_recursive"/>
+			</attribute>
+			<component id="16777216" type="StaticModel">
+				<attribute name="Model" value="Model;Models/Cube.mdl"/>
+				<attribute name="Material" value="Material;"/>
+			</component>
+		</node>
+		<node id="16777218">
+			<attribute name="Name" value="player"/>
+			<attribute name="Position" value="0 0 0"/>
+			<attribute name="Rotation" value="1 -0 -0 -0"/>
+			<attribute name="Scale" value="1 1 1"/>
+			<attribute name="Variables"/>
+			<attribute name="Tags">
+				<string value="Collection_recursive"/>
+				<string value="player"/>
+				<string value="player_recursive"/>
+			</attribute>
+			<component id="16777217" type="AnimatedModel">
+				<attribute name="Model" value="Model;Models/player.mdl"/>
+				<attribute name="Material" value="Material;Materials/material-palette.xml"/>
+			</component>
+		</node>
+	</node>
+</scene>
