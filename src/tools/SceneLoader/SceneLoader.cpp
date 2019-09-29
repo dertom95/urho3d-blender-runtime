@@ -219,6 +219,9 @@ bool SceneLoader::CreateScene()
     cameraNode_->SetRotation(Quaternion(90,-90,0));
     Globals::instance()->camera=camera;
 
+
+    EnsureLight(scene_);
+    /*
     // set a light
     // TODO: Use only the light provided by scene (once this is exported correctly)
     PODVector<Light*> sceneLights;
@@ -236,7 +239,7 @@ bool SceneLoader::CreateScene()
         light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
         light->SetSpecularIntensity(0.5f);
         //light->SetColor(Color::RED);
-    }
+    }*/
 
 
 
@@ -275,20 +278,22 @@ void SceneLoader::ReloadScene()
     PODVector<Light*> sceneLights;
     scene_->GetComponents<Light>(sceneLights,true);
 
-    if (sceneLights.Size()==0){
-        Node* lightNode = scene_->CreateChild("DirectionalLight");
-        lightNode->SetRotation(Quaternion(18.0f,55.0f,-17.0f));
+    EnsureLight(scene_);
 
-        //lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
-        Light* light = lightNode->CreateComponent<Light>();
-        light->SetLightType(LIGHT_DIRECTIONAL);
-        light->SetCastShadows(true);
-        light->SetShadowBias(BiasParameters(0.00025f, 0.5f));
-        light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
-        light->SetSpecularIntensity(0.5f);
-     //   light->SetColor(Color::RED);
-        light->SetBrightness(2.5f);
-    }
+//    if (sceneLights.Size()==0){
+//        Node* lightNode = scene_->CreateChild("DirectionalLight");
+//        lightNode->SetRotation(Quaternion(18.0f,55.0f,-17.0f));
+
+//        //lightNode->SetDirection(Vector3(0.6f, -1.0f, 0.8f)); // The direction vector does not need to be normalized
+//        Light* light = lightNode->CreateComponent<Light>();
+//        light->SetLightType(LIGHT_DIRECTIONAL);
+//        light->SetCastShadows(true);
+//        light->SetShadowBias(BiasParameters(0.00025f, 0.5f));
+//        light->SetShadowCascade(CascadeParameters(10.0f, 50.0f, 200.0f, 0.0f, 0.8f));
+//        light->SetSpecularIntensity(0.5f);
+//     //   light->SetColor(Color::RED);
+//        light->SetBrightness(2.5f);
+//    }
 
     UpdateCameras();
 
@@ -947,13 +952,13 @@ void SceneLoader::UpdateViewRenderer(ViewRenderer *renderer)
 }
 
 ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height,float fov)
-    : ctx_(ctx),
+    : fov_(fov),
       viewId_(id),
       width_(width),
       height_(height),
-      fov_(fov),
+      orthosize_(0),
       orthoMode_(false),
-      orthosize_(0)
+      ctx_(ctx)
 {
 //    viewportCameraNode_ = new Node(ctx);
     netId = "runtime-"+String(id);
