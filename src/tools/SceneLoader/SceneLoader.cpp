@@ -180,6 +180,7 @@ void SceneLoader::ExportComponents(const String& outputPath)
     exporter->AddComponentHashToFilterList(DebugRenderer::GetTypeStatic());
     exporter->AddComponentHashToFilterList(Zone::GetTypeStatic());
     exporter->AddComponentHashToFilterList(AnimationController::GetTypeStatic());
+    exporter->AddComponentHashToFilterList(StaticModel::GetTypeStatic());
 
     exporter->AddCustomUIFile("./customui.py");
     exporter->AddMaterialFolder("Materials");
