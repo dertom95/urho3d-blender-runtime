@@ -85,7 +85,6 @@ SceneLoader::SceneLoader(Context* context) :
 
 void SceneLoader::Start()
 {
-    auto args = GetArguments();
     ResourceCache* cache = GetSubsystem<ResourceCache>();
     Globals::instance()->cache=cache;
 
@@ -93,7 +92,8 @@ void SceneLoader::Start()
 
     URHO3D_LOGINFOF("[SceneLoader] Current dir:%s",fs->GetCurrentDir().CString());
 
-    for (int i=0;i < args.Size(); i++){
+    auto args = GetArguments();
+    for (unsigned i=0;i < args.Size(); i++){
         String arg = args[i];
         if (args[i]=="--workingdir" && (i+1)<args.Size()){
             String workpath = args[i+1];

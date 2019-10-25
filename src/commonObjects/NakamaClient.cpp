@@ -90,6 +90,7 @@ void NakamaClient::Authenticate(const String &email, const String &password, boo
             auto users = matched->users;
             auto matchId = matched->matchId;
             int a=0;
+            URHO3D_LOGINFOF("token:%s useramount:%d matchid:%s",token.c_str(),users.size(),matchId.c_str());
         });
 
         rtClient_->setListener(&listener_);
