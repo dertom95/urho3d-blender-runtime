@@ -33,8 +33,8 @@ include (UrhoCommon)
 
 
 add_subdirectory(src/3rd/nakama-cpp-sdk ${CMAKE_CURRENT_BINARY_DIR}/nakama-cpp)
-
-
+#add_subdirectory(src/3rd/nakama-cpp)
+#INCLUDE_DIRECTORIES(src/3rd/nakama-cpp/include)
 
 
 #subdirs(src/3rd/libzmq)

@@ -104,7 +104,8 @@ void NakamaClient::Authenticate(const String &email, const String &password, boo
 
     authenticated_=false;
     //client_->authenticateDevice("123456","tomtomtom",true,successCallback,errorCallback);
-    client_->authenticateEmail(email.CString(), password.CString(), "", createIfNotExisting, successCallback, errorCallback);
+    const NStringMap& vars={};
+    client_->authenticateEmail(email.CString(), password.CString(), "", createIfNotExisting,vars, successCallback, errorCallback);
 }
 
 void NakamaClient::AddLeaderboardScore(String leaderboardId,int64_t score)
