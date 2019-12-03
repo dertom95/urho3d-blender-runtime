@@ -24,6 +24,10 @@ void GroupInstance::SetGroupFilename(const String &groupFilename)
     XMLFile* file = cache->GetResource<XMLFile>(groupFilename);
     groupRoot = node_->CreateChild("group_root");
     groupRoot->LoadXML(file->GetRoot());
+//    for (auto child : groupRoot->GetChildren()){
+//        node_->AddChild(child);
+//    }
+//    groupRoot->Remove();
 }
 
 void GroupInstance::SetGroupOffset(const Vector3& groupOffset){
