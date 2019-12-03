@@ -41,7 +41,6 @@
 #include "SampleComponents/SampleComponents.h"
 
 #include "SampleComponents/PlayAnimation.h"
-#include "game/gameComponents/GameComponents.h"
 #include <Globals.h>
 #include <Urho3D/Urho3DAll.h>
 #include "CustomEvents.h"
@@ -76,7 +75,6 @@ SceneLoader::SceneLoader(Context* context) :
 
     // register group instance component
     CommonComponents::RegisterComponents(context);
-    GameComponents::RegisterComponents(context);
     SampleComponents::RegisterComponents(context);
 
     engineParameters_[EP_WINDOW_RESIZABLE]=true;

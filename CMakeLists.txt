@@ -21,7 +21,7 @@ HunterGate(
 )
 
 # Set project name
-project (TheGame)
+project (Urho3D-SceneLoader)
 
 # Set CMake modules search path
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
@@ -32,20 +32,11 @@ include (UrhoCommon)
 # Define target name
 
 
-add_subdirectory(src/3rd/nakama-cpp-sdk ${CMAKE_CURRENT_BINARY_DIR}/nakama-cpp)
-#add_subdirectory(src/3rd/nakama-cpp)
-#INCLUDE_DIRECTORIES(src/3rd/nakama-cpp/include)
-
-
-#subdirs(src/3rd/libzmq)
-#subdirs(src/3rd/cppzmq)
-
 hunter_add_package(ZeroMQ)
 
 find_package(ZeroMQ CONFIG REQUIRED)
 
 INCLUDE_DIRECTORIES(
-    src/3rd/libzmq/include
     src/3rd/cppzmq
 )
 
@@ -54,32 +45,6 @@ file (GLOB_RECURSE GAME_FILES
     "src/game/gameComponents/*.cpp"
     "src/game/gameObjects/*.h"
     "src/game/gameObjects/*.cpp"
-)
-
-
-set (GAME_COMMON
-    src/game/SaalisEvents.h
-    src/game/SaalisGlobals.h
-)
-
-set (GAME_CLIENT
-    src/game/Saalis.h
-    src/game/Saalis.cpp
-)
-
-set (GAME_SERVER_STARTER
-    src/game/SaalisServerStarter.h
-    src/game/SaalisServerStarter.cpp)
-
-
-file (GLOB GAME_COMPONENTS
-    "src/game/gameComponents/*.h"
-    "src/game/gameComponents/*.cpp" 
-)
-
-file(GLOB GAME_SERVER
-    "src/game/serverObjects/*.h"
-    "src/game/serverObjects/*.cpp"
 )
 
 
@@ -125,9 +90,8 @@ set (COMMON_SOURCE_FILES
 )
 
 set (INCLUDE_DIRS src
-    src/3rd/libzmq/include
     src/3rd/cppzmq
-    src/3rd/nakama-cpp-sdk/include)
+    )
 
 
 set (TARGET_NAME UrhoSceneLoader)
@@ -145,32 +109,4 @@ set (SOURCE_FILES
 setup_main_executable ()
 
 target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
-target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
-
-# compile game
-set (TARGET_NAME ${PROJECT_NAME})
-set (SOURCE_FILES
-    ${COMMON_COMPONENTS_SOURCE}
-    ${GAME_FILES}
-    ${GAME_COMMON}
-    ${GAME_CLIENT}
-    ${COMMON_OBJECTS_SOURCE}
-)
-setup_main_executable ()
-target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
-target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
-
-set (TARGET_NAME ${PROJECT_NAME}-server)
-set (SOURCE_FILES
-    ${COMMON_COMPONENTS_SOURCE}
-    ${COMMON_OBJECTS_SOURCE}
-    ${GAME_FILES}
-    ${GAME_COMMON}
-    ${GAME_SERVER}
-    ${GAME_SERVER_STARTER}
-)
-setup_main_executable ()
-target_link_libraries(${TARGET_NAME} ZeroMQ::libzmq-static)
-target_link_libraries(${TARGET_NAME} ext_nakama-cpp)
-
 
