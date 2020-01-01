@@ -30,9 +30,10 @@ void GroupInstance::SetGroupFilename(const String &groupFilename)
 //    groupRoot->Remove();
 }
 
-void GroupInstance::SetGroupOffset(const Vector3& groupOffset){
-    for (Node* node : groupRoot->GetChildren()){
-        node->Translate(groupOffset*-1);
-    }
+void GroupInstance::SetGroupOffset(const Vector3& go){
+//    for (Node* node : groupRoot->GetChildren()){
+//        Vector3 gOffset(-go.y_,-go.z_,-go.x_);
+//       // node->Translate(gOffset);
+//    }
     this->groupOffset = groupOffset;
 }
