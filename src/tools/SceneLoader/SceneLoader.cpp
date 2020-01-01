@@ -64,6 +64,7 @@ SceneLoader::SceneLoader(Context* context) :
     ,surface(0)
     ,jsonfile_(context)
     ,currentViewRenderer(0)
+    ,currentRenderPathDefault(true)
 {
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -121,7 +122,6 @@ void SceneLoader::Start()
             i++;
             URHO3D_LOGINFOF("[SceneLoader] customui: %s",customUI.CString());
         }
-
     }
     // Execute base class startup
     Sample::Start();
@@ -332,10 +332,25 @@ void SceneLoader::CreateUI()
 void SceneLoader::SetupViewport()
 {
     auto* renderer = GetSubsystem<Renderer>();
+    auto* cache = GetSubsystem<ResourceCache>();
 
     // Set up a viewport to the Renderer subsystem so that the 3D scene can be seen
     SharedPtr<Viewport> viewport(new Viewport(context_, scene_, cameraNode_->GetComponent<Camera>()));
     renderer->SetViewport(0, viewport);
+
+    renderer->SetHDRRendering(true);
+
+    // Add post-processing effects appropriate with the example scene
+    defaultRenderpath = viewport->GetRenderPath()->Clone();
+
+    SharedPtr<RenderPath> effectRenderPath = viewport->GetRenderPath()->Clone();
+    pbrRenderpath = viewport->GetRenderPath()->Clone();
+    pbrRenderpath->Append(cache->GetResource<XMLFile>("PostProcess/FXAA2.xml"));
+    pbrRenderpath->Append(cache->GetResource<XMLFile>("PostProcess/GammaCorrection.xml"));
+    pbrRenderpath->Append(cache->GetResource<XMLFile>("PostProcess/Tonemap.xml"));
+    pbrRenderpath->Append(cache->GetResource<XMLFile>("PostProcess/AutoExposure.xml"));
+
+    viewport->SetRenderPath(defaultRenderpath);
 
 }
 
@@ -515,7 +530,7 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
     }
     else if (input->GetKeyPress(KEY_V)){
         if (viewRenderers.Size()>0){
-            if (showViewportId>viewRenderers.Size()) {
+            if (showViewportId>=viewRenderers.Size()) {
                 showViewportId = 0;
             }
             auto key = viewRenderers.Keys()[showViewportId];
@@ -537,6 +552,24 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
     }
     else if (input->GetKeyPress(KEY_0)){
         BlenderNetwork* bN = GetSubsystem<BlenderNetwork>();
+    }
+    else if (input->GetKeyPress(KEY_P)){
+        currentRenderPathDefault = !currentRenderPathDefault;
+        auto* renderer = GetSubsystem<Renderer>();
+        for (auto viewrenderer : viewRenderers.Values()){
+            Viewport* viewport = viewrenderer->GetViewport();
+            if (currentRenderPathDefault){
+                viewport->SetRenderPath(defaultRenderpath);
+                renderer->SetHDRRendering(false);
+                URHO3D_LOGINFO("Set Renderpath: default");
+            }
+            else{
+                URHO3D_LOGINFO("Set Renderpath: PBR");
+                viewport->SetRenderPath(pbrRenderpath);
+                renderer->SetHDRRendering(true);
+            }
+
+        }
     }
 
     if (!updatedCamera){

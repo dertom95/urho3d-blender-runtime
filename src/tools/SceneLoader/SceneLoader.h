@@ -170,5 +170,9 @@ private:
     HashSet<ViewRenderer*> updatedRenderers;
     ViewRenderer* currentViewRenderer;
 
+    bool currentRenderPathDefault;
+    SharedPtr<RenderPath> pbrRenderpath;
+    SharedPtr<RenderPath> defaultRenderpath;
+
     JSONFile jsonfile_;
 };
