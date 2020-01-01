@@ -38,7 +38,7 @@ public:
     void AddAnimationFolder(const String& folder);
     void AddModelFolder(const String& folder);
 
-    void Export(String filename);
+    void Export(String filename,bool exportComponentTree=true,bool exportMaterialTree=true);
 
     JSONObject ExportComponents();
     JSONObject ExportMaterials();

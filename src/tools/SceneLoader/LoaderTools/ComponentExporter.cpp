@@ -608,6 +608,9 @@ JSONObject Urho3DNodeTreeExporter::ExportComponents()
                 if (attr.mode_ & AM_NOEDIT)
                     continue; // ignore no-edit attributes
 
+                if (attr.name_.Contains('.'))
+                    continue;
+
                 JSONObject prop;
 
                 // work around to use new prop-helpers
@@ -768,17 +771,22 @@ JSONObject Urho3DNodeTreeExporter::ExportGlobalData(){
     return globalData;
 }
 
-void Urho3DNodeTreeExporter::Export(String filename)
+void Urho3DNodeTreeExporter::Export(String filename,bool exportComponentTree,bool exportMaterialTree)
 {
 
     ProcessFileSystem();
 
-    auto materialTree = ExportMaterials();
-    auto componentTree = ExportComponents();
     auto globalData = ExportGlobalData();
     trees.Clear();
-    trees.Push(componentTree);
-    trees.Push(materialTree);
+    if (exportComponentTree)
+    {
+        auto componentTree = ExportComponents();
+        trees.Push(componentTree);
+    }
+    if (exportMaterialTree) {
+        auto materialTree = ExportMaterials();
+        trees.Push(materialTree);
+    }
 
     if (!m_customUIFilenames.Empty()){
         FileSystem* fs = GetSubsystem<FileSystem>();
