@@ -1,15 +1,17 @@
 #pragma once
 
-#include <Urho3D/Urho3DAll.h>
+#include <Urho3D/Scene/LogicComponent.h>
 
-class RotationFix : public Component
+using namespace Urho3D;
+
+class RotationFix : public LogicComponent
 {
-    URHO3D_OBJECT(RotationFix,Component);
+    URHO3D_OBJECT(RotationFix,LogicComponent);
 public:
     static void RegisterObject(Context *context);
 
     RotationFix(Context* ctx);
 
-    void OnSceneSet(Scene* scene) override;
+    void DelayedStart() override;
 
 };
