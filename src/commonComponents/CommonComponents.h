@@ -7,6 +7,7 @@
 #include <commonComponents/ParentBone.h>
 #include <commonComponents/Character.h>
 #include <commonComponents/CharacterController.h>
+#include "RotationFix.h"
 
 
 using namespace Urho3D;
@@ -21,4 +22,5 @@ void CommonComponents::RegisterComponents(Context *context)
     GroupInstance::RegisterObject(context);
     CNavigationMesh::RegisterObject(context);
     ParentBone::RegisterObject(context);
+    RotationFix::RegisterObject(context);
 }

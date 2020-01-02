@@ -2,16 +2,14 @@
 
 #include <Urho3D/Urho3DAll.h>
 
-class CameraFix : public Component
+class RotationFix : public Component
 {
-    URHO3D_OBJECT(CameraFix,Component);
+    URHO3D_OBJECT(RotationFix,Component);
 public:
     static void RegisterObject(Context *context);
 
-    CameraFix(Context* ctx);
+    RotationFix(Context* ctx);
 
     void OnSceneSet(Scene* scene) override;
 
 };
-
-
