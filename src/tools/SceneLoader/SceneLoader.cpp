@@ -66,6 +66,9 @@ SceneLoader::SceneLoader(Context* context) :
     ,currentViewRenderer(0)
     ,currentRenderPathDefault(true)
 {
+    settings.showPhysics = false;
+    settings.showPhysicsDepth = true;
+
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
 
@@ -358,11 +361,13 @@ void SceneLoader::SubscribeToEvents()
 {
     // Subscribe HandleUpdate() function for camera motion
     SubscribeToEvent(E_UPDATE, URHO3D_HANDLER(SceneLoader, HandleUpdate));
+    SubscribeToEvent(E_POSTRENDERUPDATE, URHO3D_HANDLER(SceneLoader, HandlePostRenderUpdate));
     using namespace FileChanged;
     SubscribeToEvent(E_FILECHANGED, URHO3D_HANDLER(SceneLoader, HandleFileChanged));
     SubscribeToEvent(E_ENDALLVIEWSRENDER, URHO3D_HANDLER(SceneLoader, HandleAfterRender));
     using namespace BlenderConnect;
     SubscribeToEvent(E_BLENDER_MSG, URHO3D_HANDLER(SceneLoader,HandleBlenderMSG));
+
 }
 
 void SceneLoader::MoveCamera(float timeStep)
@@ -443,12 +448,7 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
             scene->LoadXML(*file);
 
             EnsureLight((scene));
-            for (ViewRenderer* view : viewRenderers.Values()){
-                if (view->GetScene() == scene){
-                    view->RequestRender();
-                    UpdateViewRenderer(view);
-                }
-            }
+            UpdateAllViewRenderers(scene);
         }
     }
     if (resName.EndsWith("png") || resName.EndsWith("jpg") || resName.EndsWith("dds")){
@@ -467,6 +467,16 @@ void SceneLoader::HandleFileChanged(StringHash eventType, VariantMap& eventData)
     //URHO3D_LOGINFOF("File Changed: fn:%s resname:%s",filename.CString(),resName.CString());
 }
 
+
+void SceneLoader::UpdateAllViewRenderers(Scene* scene)
+{
+    for (ViewRenderer* view : viewRenderers.Values()){
+        if (!scene || view->GetScene() == scene){
+            view->RequestRender();
+            UpdateViewRenderer(view);
+        }
+    }
+}
 
 void SceneLoader::ChangeFov(float delta)
 {
@@ -487,11 +497,17 @@ void SceneLoader::HandleBlenderMSG(StringHash eventType, VariantMap &eventData)
 {
     using namespace BlenderConnect;
     auto topic = eventData[P_TOPIC].GetString();
+    auto subtype = eventData[P_SUBTYPE].GetString();
+    auto datatype = eventData[P_DATATYPE].GetString();
     auto d = eventData[P_DATA];
     JSONObject data  =  d.GetCustom<JSONObject>();
     //*static_cast<JSONObject*>(eventData[P_DATA].GetVoidPtr());
-    HandleRequestFromBlender(data);
-    int a=0;
+    if (subtype == "data_change"){
+        HandleRenderRequestFromBlender(data);
+    }
+    else if (subtype == "settings") {
+        HandleSettingsRequestFromBlender(data);
+    }
 }
 
 void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
@@ -582,6 +598,13 @@ void SceneLoader::HandleUpdate(StringHash eventType, VariantMap& eventData)
             screenshotTimer-=timeStep;
         }
     }
+}
+
+void SceneLoader::HandlePostRenderUpdate(StringHash eventType, VariantMap& eventData)
+{
+    // If draw debug mode is enabled, draw physics debug geometry. Use depth test to make the result easier to interpret
+    if (settings.showPhysics)
+        scene_->GetComponent<PhysicsWorld>()->DrawDebugGeometry(settings.showPhysicsDepth);
 }
 
 
@@ -813,9 +836,20 @@ Matrix4 JSON2Matrix(const JSONArray& mat4Vecs)
     return vmat;
 }
 
+void SceneLoader::HandleSettingsRequestFromBlender(const JSONObject &json)
+{
+    if (!json.Contains("show_physics")) {
+        URHO3D_LOGERROR("could not process blender settings!");
+        return;
+    }
 
+    settings.showPhysics = json["show_physics"]->GetBool();
+    settings.showPhysicsDepth = json["show_physics_depth"]->GetBool();
 
-void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
+    UpdateAllViewRenderers();
+}
+
+void SceneLoader::HandleRenderRequestFromBlender(const JSONObject &json)
 {
     int viewId = json["view_id"]->GetInt();
 
@@ -836,7 +870,7 @@ void SceneLoader::HandleRequestFromBlender(const JSONObject &json)
         newRenderer = true;
         String sceneName = json["scene_name"]->GetString();
         Scene* scene = GetScene(sceneName);
-        viewRenderer = new ViewRenderer(context_,viewId,scene,width,height,fov);
+        viewRenderer = new ViewRenderer(context_,settings,viewId,scene,width,height,fov);
         viewRenderers[viewId] = viewRenderer;
         UpdateViewRenderer(viewRenderer);
     }
@@ -983,14 +1017,15 @@ void SceneLoader::UpdateViewRenderer(ViewRenderer *renderer)
     updatedRenderers.Insert(renderer);
 }
 
-ViewRenderer::ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height,float fov)
+ViewRenderer::ViewRenderer(Context* ctx,RenderSettings& settings_, int id, Scene* initialScene, int width,int height,float fov)
     : fov_(fov),
       viewId_(id),
       width_(width),
       height_(height),
       orthosize_(0),
       orthoMode_(false),
-      ctx_(ctx)
+      ctx_(ctx),
+      settings(settings_)
 {
 //    viewportCameraNode_ = new Node(ctx);
     netId = "runtime-"+String(id);
@@ -1114,6 +1149,10 @@ void ViewRenderer::SetSize(int width, int height, float fov)
 
 void ViewRenderer::RequestRender()
 {
+    if (settings.showPhysics) {
+        PhysicsWorld* pw = currentScene_->GetComponent<PhysicsWorld>(true);
+        pw->DrawDebugGeometry(settings.showPhysicsDepth);
+    }
     renderSurface_->QueueUpdate();
 }
 

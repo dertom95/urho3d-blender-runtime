@@ -35,9 +35,14 @@ class Scene;
 
 }
 
+struct RenderSettings {
+    bool showPhysics;
+    bool showPhysicsDepth;
+};
+
 class ViewRenderer{
 public:
-    ViewRenderer(Context* ctx,int id, Scene* initialScene, int width,int height,float fov);
+    ViewRenderer(Context* ctx,RenderSettings& settings,int id, Scene* initialScene, int width,int height,float fov);
     void SetSize(int width,int height,float fov);
     void SetScene(Scene* scene);
     void SetViewMatrix(const Matrix4& vmat);
@@ -62,6 +67,8 @@ private:
     int height_;
     float orthosize_;
     bool orthoMode_;
+
+    RenderSettings& settings;
 
     Context* ctx_;
     SharedPtr<Scene> currentScene_;
@@ -109,6 +116,8 @@ private:
     void ExportComponents(const String& outputPaht);
 
     void HandleUpdate(StringHash eventType, VariantMap& eventData);
+    void HandlePostRenderUpdate(StringHash eventType, VariantMap& eventData);
+
 
     void HandleFileChanged(StringHash eventType, VariantMap& eventData);
     /// Handle reload start of the script file.
@@ -117,12 +126,17 @@ private:
     void HandleScriptReloadFinished(StringHash eventType, VariantMap& eventData);
     /// Handle reload failure of the script file.
     void HandleScriptReloadFailed(StringHash eventType, VariantMap& eventData);
+
+    void HandleAfterSingleRender(StringHash eventType, VariantMap& eventData);
     void HandleAfterRender(StringHash eventType, VariantMap& eventData);
 
     void HandleBlenderMSG(StringHash eventType, VariantMap& eventData);
 
 
-    void HandleRequestFromBlender(const JSONObject &json);
+    /// render the view and send it back to blender
+    void HandleRenderRequestFromBlender(const JSONObject &json);
+    void HandleSettingsRequestFromBlender(const JSONObject &json);
+
     void UpdateCameras();
     void EnsureLight(Scene* scene);
 
@@ -130,7 +144,9 @@ private:
     Scene* GetScene(const String& sceneName);
     ViewRenderer* GetViewRenderer(int viewId);
     ViewRenderer* CreateViewRenderer(Context* ctx, Scene* scene, int width, int height);
+    void UpdateAllViewRenderers(Scene* scene=nullptr);
     void UpdateViewRenderer(ViewRenderer* renderer);
+
 
     void InitEditor();
 
@@ -139,6 +155,8 @@ private:
 
   //  void HandleRequestFromBlender(const JSONObject& json);
 //    void HandleRequestFromEngineToBlender();
+
+    RenderSettings settings;
 
     String sceneName;
     Vector<String> runtimeFlags;
@@ -175,4 +193,5 @@ private:
     SharedPtr<RenderPath> defaultRenderpath;
 
     JSONFile jsonfile_;
+
 };
