@@ -68,6 +68,7 @@ SceneLoader::SceneLoader(Context* context) :
 {
     settings.showPhysics = false;
     settings.showPhysicsDepth = true;
+    settings.activatePhysics = false;
 
     // register component exporter
     context->RegisterSubsystem(new Urho3DNodeTreeExporter(context));
@@ -474,6 +475,8 @@ void SceneLoader::UpdateAllViewRenderers(Scene* scene)
         if (!scene || view->GetScene() == scene){
             view->RequestRender();
             UpdateViewRenderer(view);
+            PhysicsWorld* pw = view->GetScene()->GetComponent<PhysicsWorld>();
+            pw->SetUpdateEnabled(settings.activatePhysics);
         }
     }
 }
@@ -845,6 +848,7 @@ void SceneLoader::HandleSettingsRequestFromBlender(const JSONObject &json)
 
     settings.showPhysics = json["show_physics"]->GetBool();
     settings.showPhysicsDepth = json["show_physics_depth"]->GetBool();
+    settings.activatePhysics = json["activate_physics"]->GetBool();
 
     UpdateAllViewRenderers();
 }

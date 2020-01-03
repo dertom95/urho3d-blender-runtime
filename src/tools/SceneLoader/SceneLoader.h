@@ -38,6 +38,7 @@ class Scene;
 struct RenderSettings {
     bool showPhysics;
     bool showPhysicsDepth;
+    bool activatePhysics;
 };
 
 class ViewRenderer{
